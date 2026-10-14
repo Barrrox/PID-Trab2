@@ -159,7 +159,7 @@ M�dulos independentes da interface.
 | `Morfologia` | Erosão, dilatação, abertura, fechamento e preenchimento de buracos |
 | `ImagemBordas` | Cópia, erosão leve e subtração |
 | `SeguidorFronteira` | Seguidor de Gonzalez & Woods |
-| `VarreduraFolhas` | Varredura, disparo do seguidor, contagem e pilha de folhas |
+| `VarreduraFolhas` | Varredura, disparo do seguidor, contagem e pilha de folhas. Expõe `detectar_folhas()`, usada tanto na medição quanto na anotação das espécies |
 | `Visualizador` | Pinta em vermelho e exibe |
 | `InterfaceUsuario` | Estado do `<Enter>`, mensagens e detecção de janela fechada |
 | `Registro` | Grava as contagens em `contagens.csv` |
@@ -211,11 +211,11 @@ projeto/
 | 3 | Binarização (distância de cor ao fundo, polaridade) | Teste 2 |
 | 4 | Morfologia: erosão, dilatação, abertura, fechamento, preenchimento de buracos (matrizes pequenas primeiro) | Testes 3 e 4 |
 | 5 | Imagem de bordas: cópia, erosão leve e subtração | Teste 5 |
-| 6 | Varredura, seguidor de fronteira, contagem e pilha de folhas | Testes 6, 7 e 8 |
+| 6 | Varredura, seguidor de fronteira, contagem e pilha de folhas, com ids determinísticos (ordem da varredura) em uma função `detectar_folhas()` compartilhada com o modo de anotação | Testes 6, 7 e 8 |
 | 7 | Interação por `<Enter>` (alternância vermelho ⇄ descartar) | Teste 9 |
 | 8 | Laço do programa: pilha de imagens, sem fechar sozinho | Teste 10 |
 | 9 | Registro das contagens e (opcional) modo em lote | Teste 11 |
-| 10 | **Análise (último passo):** tabela imagem × folha, estatística por espécie, relatório e entrega | revisão de conformidade |
+| 10 | **Análise (último passo):** anotação das espécies por `(imagem, folha_id)` (mesma `detectar_folhas()`), tabela imagem × folha, estatística por espécie, relatório e entrega | revisão de conformidade |
 
 A Etapa 4 pode ser testada em matrizes pequenas, sem depender das imagens reais. Vale começar por ela se a binarização der trabalho.
 
@@ -258,7 +258,7 @@ A tabela imagem × folha (linhas = imagens, colunas = folhas) é gerada **na an�
 Descritor único: **número de pixels da fronteira**.
 
 1. **Tabela imagem × folha:** cada linha é uma imagem e cada coluna é uma folha dela (Folha 1 … Folha F_max, na ordem de descoberta da varredura). Células vazias onde a imagem tem menos folhas.
-2. **Tabela de espécies:** modelo vazio com a mesma forma, preenchido à mão (a espécie é da folha, não da imagem).
+2. **Tabela de espécies:** modelo vazio com a mesma forma, preenchido à mão (a espécie é da folha, não da imagem). A anotação usa a mesma função `detectar_folhas()` da medição, garantindo que os ids coincidam. A **folha individual é a unidade amostral**.
 3. **Estatísticas por espécie:** quantidade, média, mediana, mínimo, máximo, amplitude e desvio padrão.
 4. **Distribuição e sobreposição:** gráfico por espécie e matriz de sobreposição das faixas `[mínimo, máximo]`.
 5. **[S]** Regra de decisão simples em uma dimensão (média mais próxima ou faixas), avaliada com leave-one-out, matriz de confusão 6×6 e comparação com "sempre a espécie mais frequente". É análise experimental, e não parte da extração morfológica.

@@ -57,6 +57,7 @@ Inicia
 4. **As contagens são registradas no passo 5**, antes dos Enters. Assim os resultados são salvos mesmo que o usuário feche o programa no meio da imagem.
 5. **Leitura do passo 6:** o primeiro Enter exibe o perímetro vermelho do topo; o segundo descarta esse topo e seleciona a próxima folha (a imagem volta a ser exibida sem vermelho); o terceiro exibe a nova folha, e assim por diante.
 6. Pontos a confirmar com o professor: se o seguidor deve percorrer a **máscara de bordas morfológica** (minha leitura) e se o pecíolo faz parte da folha.
+7. **Anotação das espécies com pipeline compartilhado:** como espécies podem se misturar na mesma imagem, a espécie é anotada por `(imagem, folha_id)`. A anotação é um processo separado da medição, mas ambos usam a **mesma função** `detectar_folhas()`, para que os ids coincidam (detalhes na Etapa 6.3 e na Etapa 10.1).
 
 ---
 
@@ -181,7 +182,7 @@ projeto/
 | `Morfologia` | Erosão, dilatação, abertura, fechamento, preenchimento de buracos |
 | `ImagemBordas` | Cópia, erosão leve e subtração (passos 2 a 4) |
 | `SeguidorFronteira` | Seguidor de Gonzalez & Woods |
-| `VarreduraFolhas` | Varredura, disparo do seguidor, pilha de folhas |
+| `VarreduraFolhas` | Varredura, disparo do seguidor, pilha de folhas. Expõe `detectar_folhas()`, compartilhada entre medição e anotação |
 | `Visualizador` | Pinta em vermelho, converte para exibição, mostra janelas |
 | `InterfaceUsuario` | Estado do Enter, mensagens, detecção de janela fechada |
 | `Registro` | Grava `contagens.csv` |
@@ -400,6 +401,7 @@ empilhar as folhas de modo que o id 1 fique no TOPO (empilhar em ordem inversa �
 **Decisões [D]:**
 
 - **Ordem dos ids:** é a ordem da varredura (a folha cujo ponto mais alto vem primeiro). É determinística, e é ela que define as colunas da tabela final. Se preferir outra regra (por exemplo, da esquerda para a direita), aplique-a por ordenação depois da varredura, mas **nunca mude a regra depois de anotar as espécies**.
+- **Função única compartilhada [D]:** encapsule o pipeline até aqui (binarização, limpeza, bordas, varredura, filtro `L_min`, ids) em uma só função, por exemplo `std::vector<Folha> detectar_folhas(const ImagemRGB&)`. Os modos de medição (interativo e lote) e de anotação das espécies (Etapa 10) **chamam a mesma função**, o que garante que o `folha_id` anotado é o mesmo medido.
 - **Evitar duplicidade:** a matriz `visitado` impede que a mesma folha seja descoberta duas vezes. Ela também serve para contar os pixels únicos.
 - **Ruído:** use `L_min`, um comprimento mínimo do componente de borda (em pixels), e **escreva no terminal os componentes descartados**. É um filtro sobre a fronteira, não uma medida de tamanho da folha.
 - **Validação cruzada:** `únicos` do seguidor deve ser igual ao tamanho do componente de borda. Se diferir, emita um aviso (ramificações ou parada precoce). A medida pedida pelo enunciado é a de `únicos` do percurso.
@@ -451,7 +453,7 @@ enquanto pilha de folhas não vazia:
 - Pinte pixel a pixel, com laço seu. Para enxergar melhor, [S] pinte uma espessura maior (3×3) **só na cópia exibida**, sem afetar a contagem.
 - Imagens maiores que a tela: use `WINDOW_NORMAL` para o usuário redimensionar a janela.
 - `waitKey` devolve 13 para Enter (e 10 em alguns sistemas): aceite ambos.
-- [S] Salve com `imwrite` a imagem com o perímetro vermelho de cada folha (`<imagem>_folhaK.png`). Ela serve para o relatório e para identificar a espécie de cada folha na Etapa 10.
+- [S] Salve com `imwrite` a imagem com o perímetro vermelho de cada folha (`<imagem>_folhaK.png`, com o mesmo `K` do `folha_id`). Ela serve para o relatório e para identificar a espécie de cada folha na Etapa 10 (modo de anotação, que reutiliza `detectar_folhas()`).
 - [S] Imprima também as coordenadas de `b0`, para localizar a folha na imagem.
 
 **Teste 10:** imagem com 3 folhas: 3 exibições em vermelho, 3 descartes, depois a próxima imagem. A numeração `k de N` deve bater com a imagem.
@@ -557,6 +559,15 @@ para cada imagem:
 **Tabela 2 (espécies, preenchida à mão), com a mesma forma:** o programa gera um **modelo vazio** com as mesmas linhas e colunas da Tabela 1. Para cada célula, anote a espécie (use o vocabulário fixo: Folhado, Araçá, Quaresmeira, Pessegueiro, Coleus, Uva do mato). Para saber qual folha é qual, use as imagens com o perímetro vermelho salvas na Etapa 7 e a Figura 1 do enunciado. Cuidado: uma mesma imagem pode misturar espécies. Em caso de dúvida, confirme com o professor ou com a organização dos arquivos de treino.
 
 **Importante:** como os `folha_id` dependem dos parâmetros e da ordem da varredura, **não altere** esses parâmetros depois de preencher a Tabela 2. Se alterar, refaça a anotação.
+
+**Processo de anotação com pipeline compartilhado [D]:** a anotação das espécies (Tabela 2) é um processo separado da medição, mas ambos passam pela **mesma função** `detectar_folhas()` (binarização → limpeza → bordas → varredura → ids), definida na Etapa 6. Assim, a "Folha k" que você anota é, por construção, a "Folha k" medida. A bifurcação ocorre depois dela:
+
+| Modo | O que faz com a lista de folhas |
+|---|---|
+| Medição (interativo/lote) | Percorre, conta, exibe e grava `contagens.csv` |
+| Anotação [S] (`--anotar`) | Exibe cada folha com seu id (e `b0`), pede a espécie no terminal e grava a linha em `tabela_especies.csv` |
+
+Chave da anotação: `(imagem, folha_id) → espécie`. Em memória: `std::map<std::pair<std::string,int>, std::string>`.
 
 ### 10.2 Estatística por espécie (descritor único)
 
