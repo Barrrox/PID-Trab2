@@ -1,48 +1,101 @@
 #include <iostream> 
-#include <filesystem>
-// #include <funcoes.h>
-// #include <interface.h>
 using namespace std;
-// using namespace cv;
+#include <filesystem>
+using namespace filesystem;
+#include <vector>
+#include "funcoes.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+using namespace cv;
 
+#include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-struct RGB {
-    int r = 0;
-    int g = 0;
-    int b = 0;
-};
-
-struct ImagemRGB {
-    int largura = 0;
-    int altura = 0;
-
-    std::vector<unsigned char> RGB;
-};
+#define TOLERANCIA NULL // Deixado nulo para escolher depois
 
 int main() {
 
-    // Pega o path  pra pasta de imagens
-    fs::path pasta = fs::path("imagens");
+    utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING); // Para silenciar INFOs do openCV
 
-    // Source - https://stackoverflow.com/a/354922
-    // Posted by ScottF, modified by community. See post 'Timeline' for change history
-    // Retrieved 2026-10-14, License - CC BY-SA 4.0
+    // Pega o path pra pasta de imagens
+    path pasta = path("imagens");
+
+    cout << "#################################################" << endl;
+    cout << "#################################################" << endl;
+    cout << "#################################################" << endl;
+    cout << "   Analisador de Fronteira de Folhas" << endl;
+    cout << "   Autores: André Franco e Matheus Barros" << endl;
+    cout << endl;
+    cout << "#################################################" << endl;
+    cout << "#################################################" << endl;
+    cout << "#################################################" << endl;
+    cout << endl;
+
 
     // mudar essa condição do while
     // Deixa o usuário escolher qual imagem processar agora
     while(true) {
-        ImagemRGB imagem = (NULL, "open", pasta, NULL, NULL, SW_SHOWDEFAULT);
-        // exibe em tela a imagem original
-    
-        copia_erosao = Imagem;
+
+        // Captura o caminho da imagem
+        string caminho;
+        cout << "\nDigite o caminho da imagem (ou 'sair' para encerrar): ";
+        getline(cin, caminho);
+
+        // Se usuario digitou sair, encerra
+        if (caminho == "sair") {
+            cout << "Encerrando o programa..." << endl;
+            return 0;
+        }
+
+        // Verifica se o arquivo realmente existe ou se caminho vazio
+        if (caminho.empty() || !exists(caminho)) {
+            cout << "Erro: O arquivo nao foi encontrado: " << caminho << endl;
+            continue;
+        }
+
+        cv::Mat img = imread(caminho);
+        
+        // Verifica se abriu corretamente
+        if (img.empty()) {
+            cout << "Erro ao abrir a imagem: " << caminho << endl;
+            return 1;
+        }
+
+        /* Essa seção comentada tinha a lógica para converter para a nossa representação de imagem e pixel
+
+        // Copia para a estrutura própria ImagemBGR
+        ImagemBGR imagem;
+        imagem.largura = img.cols;
+        imagem.altura = img.rows;
+
+        // Aloca o espaço necessário (Largura * Altura * 3 canais BGR)
+        imagem.dados.resize(static_cast<size_t>(imagem.largura) * imagem.altura * 3);
+        
+        // Copiar dados
+        BGR pixel;
+        for(int y = 0; y < imagem.altura; y++){ // Iterar sobre altura (y)
+            for(int x = 0; x < imagem.largura; x++){ // Iterar sobre largura (x)
+                
+                // Descobro o index correto
+                size_t idx = (static_cast<size_t>(y) * imagem.largura + x) * 3;
+
+                pixel.r = img.data[idx + 2];
+                pixel.g = img.data[idx + 1];
+                pixel.b = img.data[idx];
+                
+                imagem.definirPixel(x,y, pixel);
+            }
+        } */  
+
+        // Binarizar imagem
+        // img_bin = binarizar(img, TOLERANCIA)
 
         // faz negativa
+        
         // faz erosao
-
+        
         // imagem = imagem - copia_erosao;
+
         // exibe em tela a imagem processada
         
         cout << "Aperte ENTER para exibir os contornos e contagem de pixels da imagem processada" << endl;
@@ -54,19 +107,21 @@ int main() {
 
         cout << "Aperte SPACE para selecionar a próxima imagem ou ESC para encerrar o programa" << endl;
 
-        int tecla = waitKey(0);
+        cv::imshow("Imagem Original", img);
 
-        if (tecla == 27) {
-            break; // ESC pressed
-        } else if (tecla == 32) {
-            continue; // SPACE pressed, go to next iterarion
+        int tecla = waitKey(0); // waitKey só funciona se usar o imshow do cv, o que não podemos fazer. Alternativa: Usar cin do c++ mesmo
+
+        if (tecla == 27) { // ESC
+            break; 
+        } else if (tecla == 32) { // ESPAÇO 
+            continue; 
         }
     
     }
 
    
  
-    cv::destroyAllWindows();
+    // destroyAllWindows();
     return 0;
 }
     
