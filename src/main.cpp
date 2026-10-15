@@ -23,7 +23,7 @@ int main() {
     cout << "#################################################" << endl;
     cout << "#################################################" << endl;
     cout << "#################################################" << endl;
-    cout << "   Analisador de Fronteira de Folhas" << endl;
+    cout << "\n   Analisador de Fronteira de Folhas" << endl;
     cout << "   Autores: André Franco e Matheus Barros" << endl;
     cout << endl;
     cout << "#################################################" << endl;
@@ -61,6 +61,7 @@ int main() {
             return 1;
         }
 
+        ////////////////////////////////////////////////////////////////////
         /* Essa seção comentada tinha a lógica para converter para a nossa representação de imagem e pixel
 
         // Copia para a estrutura própria ImagemBGR
@@ -85,7 +86,9 @@ int main() {
                 
                 imagem.definirPixel(x,y, pixel);
             }
-        } */  
+        } */
+        ////////////////////////////////////////////////////////////////////
+        
 
         // Binarizar imagem
         // img_bin = binarizar(img, TOLERANCIA)
@@ -105,23 +108,33 @@ int main() {
                 // conta pixels do contorno
                 // exibe contorno e quantidade de pixels encontrados
 
-        cout << "Aperte SPACE para selecionar a próxima imagem ou ESC para encerrar o programa" << endl;
+        cout << "Aperte ESPAÇO para selecionar a proxima imagem ou ESC para encerrar o programa" << endl;
 
-        cv::imshow("Imagem Original", img);
+        string NomeJanela = "Janela 1";
+        namedWindow(NomeJanela, WINDOW_NORMAL);
+        imshow(NomeJanela, img);
 
         int tecla = waitKey(0); // waitKey só funciona se usar o imshow do cv, o que não podemos fazer. Alternativa: Usar cin do c++ mesmo
 
-        if (tecla == 27) { // ESC
+        if (tecla == 13) { // ENTER
+            cout << "IMPLEMENTAR ANÁLISE";
+            destroyWindow(NomeJanela);
+            break; 
+        } else if (tecla == 27) { // ESC
             break; 
         } else if (tecla == 32) { // ESPAÇO 
-            continue; 
+            destroyWindow(NomeJanela);
+            continue;
+            
+        }
+        else {
+            cout << "Tecla inválida. Aperte ESPAÇO para selecionar a proxima imagem ou ESC para encerrar o programa." << endl;
         }
     
     }
 
-   
- 
-    // destroyAllWindows();
+    cout << "\nEncerrando programa..." << endl;
+    destroyAllWindows();
     return 0;
 }
     
