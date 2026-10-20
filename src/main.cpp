@@ -11,7 +11,7 @@ using namespace cv;
 
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-#define TOLERANCIA NULL // Deixado nulo para escolher depois
+//#define TOLERANCIA 0.3 // Deixado nulo para escolher depois
 
 int main() {
 
@@ -90,8 +90,24 @@ int main() {
         ////////////////////////////////////////////////////////////////////
         
 
+        // suavizar imagem com kernel 5x5 de média.
+
         // Binarizar imagem
-        // img_bin = binarizar(img, TOLERANCIA)
+        vector<vector<int>> img_bin = binarizar(img);
+
+        // 1. Cria cv::Mat de 1 canal com as dimensões de img_bin                                                                                                                            
+        cv::Mat mat_binaria(static_cast<int>(img_bin.size()), static_cast<int>(img_bin[0].size()), CV_8UC1);                                                                                                                     
+                                                                                                                                                                                            
+        for (int y = 0; y < img_bin.size(); y++) {                                                                                                                                           
+            for (int x = 0; x < img_bin[0].size(); x++) {                                                                                                                                    
+                mat_binaria.at<uchar>(y, x) = static_cast<uchar>(img_bin[y][x] * 255);                                                                                                       
+            }                                                                                                                                                                                
+        }                                                                                                                                                                                    
+        
+        string JanelaTemp = "Imagem Binarizada";
+        // 2. Exibe na tela                          
+        namedWindow(JanelaTemp, WINDOW_NORMAL);                                                                                                                                    
+        imshow(JanelaTemp, mat_binaria);   
 
         // faz negativa
         
