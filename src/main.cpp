@@ -91,7 +91,13 @@ int main() {
         
         int contagemBorda = contadorBorda(bordas);
 
-        // 1. Cria cv::Mat de 1 canal com as dimensões de img_bin                                                                                                                            
+
+        cout << "Altura:" << img.rows << endl;
+        cout << "Largura:" << img.cols << endl;
+        cout << "Total Pixels: "<< img.rows * img.cols << endl; 
+        cout << "Número de pixels DE UMA FOLHA:" << contagemBorda << endl;
+
+// 1. Cria cv::Mat de 1 canal com as dimensões de img_bin                            
         ///////////////////////////////////////////////////////////////////////////
         ////////////////////////////////// PLOTS //////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////
@@ -103,9 +109,9 @@ int main() {
         for (int y = 0; y < static_cast<int>(img_cinza.size()); y++) {
             for (int x = 0; x < static_cast<int>(img_cinza[0].size()); x++) {
                 mat_cinza.at<uchar>(y, x) = static_cast<uchar>(img_cinza[y][x]);
-            }                                                                                                                                                                                
-        }                                                                                                                                                                                    
-        
+            }
+        }
+
         cv::Mat mat_suavizada(static_cast<int>(img_suavizada.size()), static_cast<int>(img_suavizada[0].size()), CV_8UC1);
         for (int y = 0; y < static_cast<int>(img_suavizada.size()); y++) {
             for (int x = 0; x < static_cast<int>(img_suavizada[0].size()); x++) {
@@ -209,4 +215,3 @@ int main() {
         destroyAllWindows();
     }
 }
-    

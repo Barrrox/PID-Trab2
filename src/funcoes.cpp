@@ -4,6 +4,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#include <map>
 using namespace cv;
 using namespace std;
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
@@ -81,7 +82,7 @@ int estimarCorFundo(const Mat& imagem) {
 
 
 vector<vector<vector<int>>> CV2vectorvector(const Mat& imagem){
-    
+   
     vector<vector<vector<int>>> convertida(
     imagem.rows,
     vector<vector<int>>(imagem.cols, vector<int>(3)));
@@ -145,7 +146,7 @@ vector<vector<int>> grayscale(const vector<vector<vector<int>>>& imagem) {
         for (int x = 0; x < largura; x++) {
             //vector<int> pixel = imagem[y][x];
             const vector<int>& pixel = imagem[y][x];
-
+                
             // Converte o pixel para escala de cinza
             imagemCinza[y][x] = static_cast<int>(round(0.299 * pixel[2] + 0.587 * pixel[1] + 0.114 * pixel[0]));
         }
@@ -304,6 +305,133 @@ vector<vector<int>> subtrair(const vector<vector<int>> &A, const vector<vector<i
     }    
 
     return C;
+}
+
+int contadorBorda(const std::vector<std::vector<int>> &imagem){ // roda 1 vez, arrumar pra pegar toda a imagem de uma vez pra evitar reprocesso
+
+    std::vector<std::vector<int>> imagem_com_padding = adicionar_padding(imagem, 1, 0);
+    
+    int altura = static_cast<int>(imagem.size());
+    int largura = static_cast<int>(imagem[0].size());
+    
+    vector<ponto> pontos_ordenados;
+   
+
+    // esquema pra for horário
+    // parametros
+
+    // índice:          0   1   2   3   4   5   6   7
+    //                  N   NE   E  SE   S  SO   O  NO
+    const int dx[8] = { 0,  1, 1, 1, 0, -1, -1, -1 };
+    const int dy[8] = {-1, -1, 0, 1, 1,  1,  0, -1 };
+
+    int d0 = 6; // oeste (direcao inicial caso tenha pelo menos uma fronteira)
+    int d = 0;
+    int nx = 0;
+    int ny =  0;
+
+    ponto inicio = {-1, -1}; // salva o começo do contorno
+    ponto b = {-1,-1}; // y x
+    ponto c = {-1,-1}; // y x
+   
+    
+    for (int y = 1; y < altura-1; y++) { // Itera sobre as linhas // skippa o padding
+        for (int x = 1; x < largura-1; x++) { // Itera cada pixel da linha // skippa o padding
+
+            if (imagem[y][x] == 1){ // encontrou uma fronteira // passo 1
+
+                // passo 2
+                b = {y, x};
+                c = {y,x-1}; // vizinho oeste de b, 
+                inicio = b;
+
+                pontos_ordenados.push_back(b); // salva
+            }
+        }
+    }
+
+    // Dicionarios para guardar a conversão entre posição relativa
+    // espacial e a direção cardial
+    //  const int dx[8] = { 0,  1,  1, 1,   0, -1, -1, -1 };
+    //  const int dy[8] = {-1, -1,  0, 1,   1,  1,  0, -1 };
+
+    map<pair<int, int>, int> dicionario;
+
+    dicionario[{0,-1}] = 0;
+    dicionario[{1,-1}] = 1;
+    dicionario[{1,0}] = 2;
+    dicionario[{1,1}] = 3;
+    dicionario[{0,1}] = 4;
+    dicionario[{-1,1}] = 5;
+    dicionario[{-1,0}] = 6;
+    dicionario[{-1,-1}] = 7;
+
+    map<int, ponto> dicionario_invertido;
+
+    dicionario_invertido[0] = {0, -1};
+    dicionario_invertido[1] = {1,-1};
+    dicionario_invertido[2] = {1,0};
+    dicionario_invertido[3] = {1,1};
+    dicionario_invertido[4] = {0,1};
+    dicionario_invertido[5] = {-1,1};
+    dicionario_invertido[6] = {-1,0};
+    dicionario_invertido[7] = {-1,-1};
+    dicionario_invertido[-1] = {-1,-1}; // Correção para quando chave = -1
+
+    int sentido_x = c.x - b.x; 
+    int sentido_y = c.y - b.y;
+
+    int indice = dicionario[{sentido_x, sentido_y}];
+    
+//  índice:             0   1   2   3   4   5   6   7
+//                      N   NE  E  SE   S  SO   O  NO
+//  const int dx[8] = { 0,  1,  1, 1,   0, -1, -1, -1 };
+//  const int dy[8] = {-1, -1,  0, 1,   1,  1,  0, -1 };
+/*           y, x
+    NO N  NE   [-1,-1] [0, -1] [1, -1]
+    L  b  O    [-1, 0] [0, 0 ] [1, 0 ]
+    SO S  SE   [-1, 1] [0, 1 ] [1, 1 ]
+
+               
+    c = n7
+    n8 n1 n2
+c/n7 b  n3
+    n6 n5 n4
+    
+    verdade apenas para a primeira iteração da busca pelo contorno
+
+    // c está em imagem[b.y + ny][b.x + nx];
+*/
+    
+    // continua enquanto não fizer a volta toda
+    while(b.x != inicio.x && b.y != inicio.y){
+       
+        // varre em sentido horário // passo 3
+
+        for(int k = 0; k < 8; k++){
+
+            d = (indice + k) % 8;
+            ny = b.y + dy[d];
+            nx = b.x + dx[d];
+            
+            if (imagem[ny][nx] == 1) { // novo pixel de contorno // passo 3 pra  4
+
+                // passo 4
+                b = {ny, nx};
+                ponto c2 = dicionario_invertido[indice-1]; // indice-1 da a posiução de c relativa a b
+
+                c.y += c2.y; // aqui ja é o c novo
+                c.x += c2.x;
+                
+                d = indice-1; // na prox iteração a busca em sentido horário começa da posição relativa de c para b
+                
+                pontos_ordenados.push_back(b);
+                break;
+            }
+        }
+    }
+
+    return static_cast<int>(pontos_ordenados.size());
 }
 // Aplicar morfologia matemática
 vector<vector<vector<int>>> adicionar_bordas(vector<vector<vector<int>>>& imagem, vector<vector<int>>& bordas){
