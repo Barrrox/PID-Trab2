@@ -230,7 +230,7 @@ int aplica_filtro(int x, int y, const int raio, const vector<vector<int>>& image
 
         const size_t metade = vetor.size()/2;
 
-        return static_cast<int>(round((vetor[metade] + vetor[metade+1])/2));
+        return vetor[metade];
 
     } else {
         cout << "Valor" << metodo << "para parâmetro Método de aplica_filtro() não existe" << endl;
@@ -240,67 +240,40 @@ int aplica_filtro(int x, int y, const int raio, const vector<vector<int>>& image
 
 }
 
-vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo=0){
-    
+vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo, int tam_mascara){
     
     int altura  = static_cast<int>(imagem.size());
     int largura = static_cast<int>(imagem[0].size());
 
-    // vector<vector<int>> mascara(5, vector<int>(5));
-    vector<vector<int>> mascara(7, vector<int>(7));
+    vector<vector<int>> mascara(tam_mascara, vector<int>(tam_mascara, 1));
     int somaPesos = 0;
 
-    if (metodo == 0){ // Filtro Gaussiano 5x5
-    
-    // mascara = {
-    //     {1,  4,  6,  4, 1},
-    //     {4, 16, 24, 16, 4},
-    //     {6, 24, 36, 24, 6},
-    //     {4, 16, 24, 16, 4},
-    //     {1,  4,  6,  4, 1}
-    // };
+    if (metodo == 0) { // Filtro Gaussiano (3x3, 5x5, 7x7, 9x9 via Triângulo de Pascal)
+        vector<int> pesos1D;
+        if (tam_mascara == 3) {
+            pesos1D = {1, 2, 1};
+        } else if (tam_mascara == 5) {
+            pesos1D = {1, 4, 6, 4, 1};
+        } else if (tam_mascara == 7) {
+            pesos1D = {1, 6, 15, 20, 15, 6, 1};
+        } else if (tam_mascara == 9) {
+            pesos1D = {1, 8, 28, 56, 70, 56, 28, 8, 1};
+        } else {
+            pesos1D.assign(tam_mascara, 1);
+        }
 
-    // somaPesos = 256;
-
-    // // 7x7
-    mascara = {
-        { 1,   6,  15,  20,  15,   6,  1},
-        { 6,  36,  90, 120,  90,  36,  6},
-        {15,  90, 225, 300, 225,  90, 15},
-        {20, 120, 300, 400, 300, 120, 20},
-        {15,  90, 225, 300, 225,  90, 15},
-        { 6,  36,  90, 120,  90,  36,  6},
-        { 1,   6,  15,  20,  15,   6,  1}
-    };
-
-    somaPesos = 4096;
-
-    } else if (metodo == 1) // Filtro box 5x5
-    {
-    
-    // mascara = {
-    //     {1, 1, 1, 1, 1},
-    //     {1, 1, 1, 1, 1},
-    //     {1, 1, 1, 1, 1},
-    //     {1, 1, 1, 1, 1},
-    //     {1, 1, 1, 1, 1}
-    // };
-    // somaPesos = 25;
-
-    mascara = {
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1, 1, 1}
-    };
-    somaPesos = 49;
-
+        somaPesos = 0;
+        for (int j = 0; j < tam_mascara; j++) {
+            for (int i = 0; i < tam_mascara; i++) {
+                mascara[j][i] = pesos1D[j] * pesos1D[i];
+                somaPesos += mascara[j][i];
+            }
+        }
+    } else if (metodo == 1) { // Filtro Box Média (tam_mascara x tam_mascara)
+        somaPesos = tam_mascara * tam_mascara;
     }
 
-    int raio = static_cast<int>(mascara.size()/2); // Raio inteiro da máscara (ex: 5x5 -> raio = 2)
+    int raio = tam_mascara / 2; // Raio inteiro da máscara (ex: 5x5 -> raio = 2)
 
     vector<vector<int>> imagem_com_padding = adicionar_padding(imagem, raio, 255);
 
@@ -319,7 +292,7 @@ vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo=0){
     return suavizada;
 }
 
-vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundoCinza) {
+vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundoCinza, int margem_fundo) {
 
         if (imagem_cinza.empty()) {
         return imagem_cinza; 
@@ -331,8 +304,7 @@ vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundo
     vector<vector<int>> binaria(altura, vector<int>(largura, 0));
     
     // Cor média de referência das bordas já em gray scale
-    int MARGEM_FUNDO = 45;
-    fundoCinza -= MARGEM_FUNDO; // revisar e incluior no relatório
+    fundoCinza -= margem_fundo; // revisar e incluir no relatório
 
     for (int y = 0; y < altura; y++) {
         for (int x = 0; x < largura; x++) {
@@ -345,16 +317,13 @@ vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundo
     return binaria;
 }
 
-vector<vector<int>> erosao(const vector<vector<int>> &binaria){ //  coloquei const e  & por padronização, nao se se aplica aqui
+vector<vector<int>> erosao(const vector<vector<int>> &binaria, int tam_ee){
 
-    // EE = uma máscara que representa algum objeto (acho que usaremos um quadrado 3x3)
-    // Passamos essa máscara por cada pixel da imagem e comparamos a máscara com a 
-    // os vizinhos do pixel. Se todos forem iguais, o pixel é 1, senão o pixel é 0.
-
+    vector<vector<int>> ee(tam_ee, vector<int>(tam_ee, 1));
     
     int altura = static_cast<int>(binaria.size());
     int largura = static_cast<int>(binaria[0].size());
-    int raio = static_cast<int>(elemento_estruturante.size()) / 2;
+    int raio = tam_ee / 2;
 
     vector<vector<int>> imagem_erodida(altura, vector<int>(largura, 0));
 
@@ -369,7 +338,7 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria){ //  coloquei con
                 for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linh
 
                     
-                    if (elemento_estruturante[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
+                    if (ee[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
                         continue; // Se o pixel da máscara é 1 e o pixel correspondente na imagem binária também é 1, continue
                     } else {
                         erodir = false; 
@@ -388,15 +357,13 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria){ //  coloquei con
 
 }
 
-vector<vector<int>> dilatacao(const vector<vector<int>> &binaria){
+vector<vector<int>> dilatacao(const vector<vector<int>> &binaria, int tam_ee){
 
-
-
-    // };
+    vector<vector<int>> ee(tam_ee, vector<int>(tam_ee, 1));
 
     int altura = static_cast<int>(binaria.size());
     int largura = static_cast<int>(binaria[0].size());
-    int raio = static_cast<int>(elemento_estruturante.size()) / 2;
+    int raio = tam_ee / 2;
 
     vector<vector<int>> imagem_dilatada(altura, vector<int>(largura, 0));
 
@@ -409,7 +376,7 @@ vector<vector<int>> dilatacao(const vector<vector<int>> &binaria){
             for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
                 for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linha
 
-                    if (elemento_estruturante[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
+                    if (ee[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
                         dilatar = true;
                         break; // Se encontrou pelo menos um pixel 1, já ativa e encerra a linha
                     }

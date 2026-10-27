@@ -21,12 +21,21 @@ std::vector<std::vector<std::vector<int>>> CV2vectorvector(const cv::Mat& imagem
 
 std::vector<std::vector<int>> grayscale(const std::vector<std::vector<std::vector<int>>>& imagem);
 
-std::vector<std::vector<int>> suavizar(const std::vector<std::vector<int>>& imagem);
 
-// Binariza com um limiar
-std::vector<std::vector<int>> binarizar(const std::vector<std::vector<int>>& imagem_cinza, int fundoCinza);
+/* Suaviza a imagem. Métodos:
+0 = Filtro Gaussiano
+1 = Filtro Box Média
+2 = Filtro por Mediana
+tam_mascara = 3, 5, 7 ou 9
+*/
+std::vector<std::vector<int>> suavizar(const std::vector<std::vector<int>>& imagem, int metodo = 0, int tam_mascara = 7);
+ 
+// Binariza com um limiar e margem de fundo parametrizável
+std::vector<std::vector<int>> binarizar(const std::vector<std::vector<int>>& imagem_cinza, int fundoCinza, int margem_fundo = 45);
 
-std::vector<std::vector<int>> erosao(const std::vector<std::vector<int>>& binaria);
+std::vector<std::vector<int>> erosao(const std::vector<std::vector<int>>& binaria, int tam_ee = 5);
+
+std::vector<std::vector<int>> dilatacao(const std::vector<std::vector<int>>& binaria, int tam_ee = 5);
 
 std::vector<std::vector<int>> subtrair(const std::vector<std::vector<int>>& A, const std::vector<std::vector<int>>& B);
 
