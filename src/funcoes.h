@@ -8,8 +8,13 @@
 #include <opencv2/highgui.hpp>
 
 struct ponto {
-int y;
-int x;
+    int y;
+    int x;
+};
+
+struct HistogramaBGR {
+    std::vector<std::vector<int>> F; // Frequencias [3][256] -> 0:B, 1:G, 2:R
+    int max_global = 0;                     // Maior pico entre os 3 canais
 };
 
 
@@ -20,6 +25,10 @@ int estimarCorFundo(const cv::Mat& imagem);
 std::vector<std::vector<std::vector<int>>> CV2vectorvector(const cv::Mat& imagem);
 
 std::vector<std::vector<int>> grayscale(const std::vector<std::vector<std::vector<int>>>& imagem);
+
+void salvar_histograma(const HistogramaBGR& histograma, const std::string& caminho);
+
+HistogramaBGR gerar_histograma(const std::vector<std::vector<std::vector<int>>>& imagem);
 
 
 /* Suaviza a imagem. Métodos:

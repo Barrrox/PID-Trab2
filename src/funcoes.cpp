@@ -139,6 +139,60 @@ vector<vector<vector<int>>> CV2vectorvector(const Mat& imagem){
     return convertida;
 }
 
+
+void salvar_histograma(const HistogramaBGR& histograma, const std::string& caminho){
+
+    int altura = 300;
+    int largura = 256;
+    cv::Mat imagem_hist(altura, largura, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    for (int x = 0; x < largura; x++) {
+            for (int canal = 0; canal < 3; canal++) {
+                // Normaliza altura real para imagem não ficar extratosferica.
+                int h_barra = (histograma.F[canal][x] * (altura - 1)) / histograma.max_global;
+                int y_topo = (altura - 1) - h_barra;
+                imagem_hist.at<Vec3b>(y_topo, x)[canal] = 255;
+                
+            }
+        }
+        cv::imwrite(caminho, imagem_hist);
+        
+}
+
+HistogramaBGR gerar_histograma(const vector<vector<vector<int>>>& imagem){
+
+    int altura = static_cast<int>(imagem.size());
+    int largura = static_cast<int>(imagem[0].size());
+    
+    // Aloca
+    HistogramaBGR histograma;
+    histograma.F.assign(3, vector<int>(256, 0));
+
+    for (int y = 0; y < altura; y++) {
+        for (int x = 0; x < largura; x++) {
+            histograma.F[0][imagem[y][x][0]]++;
+            histograma.F[1][imagem[y][x][1]]++;
+            histograma.F[2][imagem[y][x][2]]++;
+        }
+    }
+
+    int maior_pico = 0; // valor do maior pico entre os 3 canais;
+    int picos[3] = {0,0,0}; // BGR
+
+    for(int canal = 0; canal < 3; canal++){
+        for(int freq = 0; freq < 256; freq++){
+            if (histograma.F[canal][freq] > picos[canal]){
+                picos[canal] = histograma.F[canal][freq];
+            }
+        }
+    }
+
+    histograma.max_global = max({picos[0], picos[1], picos[2]});
+
+    return histograma;
+
+}
+
 vector<vector<int>> adicionar_padding(const vector<vector<int>>& imagem, int tamanho, int valor) {
 
     int altura = static_cast<int>(imagem.size());
@@ -294,7 +348,7 @@ vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo, int 
 
 vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundoCinza, int margem_fundo) {
 
-        if (imagem_cinza.empty()) {
+    if (imagem_cinza.empty()) {
         return imagem_cinza; 
     }
     
@@ -320,7 +374,7 @@ vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundo
 vector<vector<int>> erosao(const vector<vector<int>> &binaria, int tam_ee){
 
     vector<vector<int>> ee(tam_ee, vector<int>(tam_ee, 1));
-    
+
     int altura = static_cast<int>(binaria.size());
     int largura = static_cast<int>(binaria[0].size());
     int raio = tam_ee / 2;
@@ -518,7 +572,7 @@ c/n7 b  n3
                                                                                                                                                             
     int passos = 0;
     const int max_passos = altura * largura;
-                                                                                                                                                            
+
     do {                                                                                                                                             
         bool achou_vizinho = false;                                                                                                                  
                                                                                                                                                         
@@ -548,7 +602,7 @@ c/n7 b  n3
                                                                                                                                                         
         if (!achou_vizinho) break; // Caso de pixel isolado (sem vizinhos == 1)                                                                      
         passos++;
-                                                                                                                                                        
+
     } while ((b.x != inicio.x || b.y != inicio.y) && passos < max_passos);
 
     // remove o padding
@@ -583,7 +637,7 @@ int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int lim
 
                 ponto ponto_inicial = {i, j};
                 vector<ponto> pontos_de_borda = contornarBorda(imagem_binarizada, ponto_inicial);
-                
+
                 // Marca os pontos do contorno externo
                 for (const ponto& p : pontos_de_borda) {
                     imagem_binarizada[p.y][p.x] = index;

@@ -17,7 +17,7 @@ using namespace cv;
 2 = Filtro por Mediana 5x5
 */
 
-#define metodoSuavizao 1
+#define metodoSuavizao 0
 
 
 int main() {
@@ -81,18 +81,22 @@ int main() {
         // Transforma para gray scale
         vector<vector<int>> img_cinza = grayscale(imagem);
 
+        HistogramaBGR hist = gerar_histograma(imagem);
+
+        
+
         // suavizar imagem com kernel 5x5 de média.
-        vector<vector<int>> img_suavizada = suavizar(img_cinza, metodoSuavizao);
+        vector<vector<int>> img_suavizada = suavizar(img_cinza, 0, 21);
 
         // Binarizar imagem, já convertendo para uma matriz no C++
-        vector<vector<int>> img_bin = binarizar(img_suavizada, corFundo);
+        vector<vector<int>> img_bin = binarizar(img_suavizada, corFundo, 45);
 
-        vector<vector<int>> imagem_dilatada = dilatacao(img_bin);
+        vector<vector<int>> imagem_dilatada = dilatacao(img_bin, 11);
 
         vector<vector<int>> imagem_dilatadassa = dilatacao(imagem_dilatada);
 
         // faz erosao fixa de 1 pixel
-        vector<vector<int>> imagem_erodida = erosao(img_bin);
+        vector<vector<int>> imagem_erodida = erosao(img_bin, 5);
 
         // vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada);
 
@@ -108,13 +112,13 @@ int main() {
 
         vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
         
-        int contagemBorda = contadorBorda(bordas);
+        // int contagemBorda = contadorBorda(bordas);
 
 
         cout << "Altura:" << img.rows << endl;
         cout << "Largura:" << img.cols << endl;
         cout << "Total Pixels: "<< img.rows * img.cols << endl; 
-        cout << "Número de pixels DE UMA FOLHA:" << contagemBorda << endl;
+        // cout << "Número de pixels DE UMA FOLHA:" << contagemBorda << endl;
 
 // 1. Cria cv::Mat de 1 canal com as dimensões de img_bin                            
         ///////////////////////////////////////////////////////////////////////////
@@ -217,6 +221,7 @@ int main() {
         // Cria pasta output/ se nao existir e salva as imagens de cada etapa
         create_directories("output");
         imwrite("output/1_original.bmp", img);
+        salvar_histograma(hist, "output/histograma.bmp");
         imwrite("output/2_cinza.bmp", mat_cinza);
         imwrite("output/3_suavizada.bmp", mat_suavizada);
         imwrite("output/4_binarizada.bmp", mat_bin);
