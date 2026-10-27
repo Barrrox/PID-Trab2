@@ -600,7 +600,7 @@ std::vector<std::vector<int>> binarizarBGR(
     for (int y = 0; y < altura; y++) {
         for (int x = 0; x < largura; x++) {
             // Se a diferença de cor for maior que a tolerância, classifica como folha (1), senão fundo (0)
-            if (imagem[y][x][0] < LB && imagem[y][x][1] < LG && imagem[y][x][2] < LR) 
+            if (imagem[y][x][0] < LB || imagem[y][x][1] < LG || imagem[y][x][2] < LR) 
                 binaria[y][x] = 1;
         }
     }
