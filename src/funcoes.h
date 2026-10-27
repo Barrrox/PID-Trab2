@@ -22,6 +22,8 @@ struct HistogramaBGR {
 
 int estimarCorFundo(const cv::Mat& imagem);
 
+std::vector<int> estimarCorFundoBGR(const cv::Mat& imagem);
+
 std::vector<std::vector<std::vector<int>>> CV2vectorvector(const cv::Mat& imagem);
 
 std::vector<std::vector<int>> grayscale(
@@ -49,10 +51,13 @@ std::vector<std::vector<int>> suavizar(
         int metodo = 0, 
         int tam_mascara = 7
     );
-        int metodo = 0, 
+
+ std::vector<std::vector<std::vector<int>>> suavizarBGR(
+        const std::vector<std::vector<std::vector<int>>>& imagem,
+        int metodo = 0,
         int tam_mascara = 7
     );
- 
+
 // Binariza com um limiar e margem de fundo parametrizável
 std::vector<std::vector<int>> binarizar(
         const std::vector<std::vector<int>>& imagem_cinza, 
@@ -60,6 +65,13 @@ std::vector<std::vector<int>> binarizar(
         int margem_fundo = 45
     );
 
+std::vector<std::vector<int>> binarizarBGR(
+        const std::vector<std::vector<std::vector<int>>>& imagem, 
+        const std::vector<int>& corFundo,
+        float kB = 0.25,
+        float kG = 0.65,
+        float kR = 0.70
+    );
 
 std::vector<std::vector<int>> erosao(
         const std::vector<std::vector<int>>& binaria, 
