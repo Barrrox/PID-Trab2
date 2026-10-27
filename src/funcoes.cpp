@@ -120,6 +120,72 @@ int estimarCorFundo(const Mat& imagem) {
     return fundoCinzaPonderado;
 }
 
+vector<int> estimarCorFundoBGR(const Mat& imagem) {
+
+    long long somaB = 0;
+    long long somaG = 0;
+    long long somaR = 0;
+    
+
+    int y_max = imagem.rows - 1;
+    int x_max = imagem.cols - 1;
+
+    int totalAmostras = (y_max * 2 + x_max * 2) - 4; // Total de pixels nas borda // 4 é das bordas sobrepostas nos cantos
+    
+    // Amostra a borda superior (y = 0) e borda inferior (y = altura - 1)
+    for (int x = 0; x < imagem.cols; x++) {
+
+        // Borda inferior
+        cv::Vec3b pixel1 = imagem.at<cv::Vec3b>(y_max, x);
+
+        somaB += pixel1[0];
+        somaG += pixel1[1];
+        somaR += pixel1[2];
+
+        // Borda superior
+        cv::Vec3b pixel2 = imagem.at<cv::Vec3b>(0, x);
+
+        somaB += pixel2[0];
+        somaG += pixel2[1];
+        somaR += pixel2[2];
+
+    }
+
+    
+    // 1 2 3 4
+    // 1 2 3 4
+    // 1 2 3 4
+    // 1 2 3 4
+    // Amostra as bordas laterais esquerda (x = 0) e direita (x = largura - 1),
+  
+    for (int y = 1; y < imagem.rows - 1; y++) {
+
+        // Borda direita
+        cv::Vec3b pixel1 = imagem.at<cv::Vec3b>(y, x_max);
+
+        somaB += pixel1[0];
+        somaG += pixel1[1];
+        somaR += pixel1[2];
+
+        // Borda esquerda
+        cv::Vec3b pixel2 = imagem.at<cv::Vec3b>(y, 0);
+
+        somaB += pixel2[0];
+        somaG += pixel2[1];
+        somaR += pixel2[2];
+
+    }
+
+    vector<int> fundo(3);
+    if (totalAmostras > 0) {
+        fundo[0] = static_cast<int>(somaB / totalAmostras); // b
+        fundo[1] = static_cast<int>(somaG / totalAmostras); // g
+        fundo[2] = static_cast<int>(somaR / totalAmostras); // r
+    }
+
+    return fundo;
+}
+
 
 vector<vector<vector<int>>> CV2vectorvector(const Mat& imagem){
    
@@ -200,6 +266,24 @@ vector<vector<int>> adicionar_padding(const vector<vector<int>>& imagem, int tam
 
     vector<vector<int>> matriz_com_padding(altura + 2 * tamanho,
                                            vector<int>(largura + 2 * tamanho, valor));
+
+    for (int y = 0; y < altura; y++) {
+        for (int x = 0; x < largura; x++) {
+            matriz_com_padding[y + tamanho][x + tamanho] = imagem[y][x];
+        }
+    }
+    return matriz_com_padding;
+}
+
+vector<vector<vector<int>>> adicionar_padding(const vector<vector<vector<int>>>& imagem, int tamanho, int valor) {
+
+    int altura = static_cast<int>(imagem.size());
+    int largura = static_cast<int>(imagem[0].size());
+
+    vector<vector<vector<int>>> matriz_com_padding(
+        altura + 2 * tamanho,
+        vector<vector<int>>(largura + 2 * tamanho, vector<int>(3, valor))
+    );
 
     for (int y = 0; y < altura; y++) {
         for (int x = 0; x < largura; x++) {
@@ -346,6 +430,120 @@ vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo, int 
     return suavizada;
 }
 
+
+
+vector<int> aplica_filtroBGR(int x, int y, const int raio, const vector<vector<vector<int>>>& imagem_com_paddingBGR, int metodo, const vector<vector<int>>& mascara, int somaPesos){
+
+    // Se filtro gaussiano (0) ou box (1)
+    if (metodo <= 1){
+        
+        int somaB = 0;
+        int somaG = 0;
+        int somaR = 0;
+            
+            for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
+                for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linha
+
+                // a possicao acessada é: posicao na imagem original + deslocamento do padding + posição atual da mascara
+                // isso pra linha e coluna
+                    somaB += imagem_com_paddingBGR[y + raio + j][x + raio + i][0] * mascara[j + raio][i + raio];
+                    somaG += imagem_com_paddingBGR[y + raio + j][x + raio + i][1] * mascara[j + raio][i + raio];
+                    somaR += imagem_com_paddingBGR[y + raio + j][x + raio + i][2] * mascara[j + raio][i + raio];
+                }
+            }
+            // Retorna o pixel em vetor
+            return {static_cast<int>(round(somaB / static_cast<double>(somaPesos))),
+                    static_cast<int>(round(somaG / static_cast<double>(somaPesos))),
+                    static_cast<int>(round(somaR / static_cast<double>(somaPesos)))}; 
+
+
+    } else if (metodo == 2) // Filtro por mediana
+    {
+        // Flatenizar a mascara para aplicar sorting
+        const int tam_mascara = 2*raio+1; // dimensao da mascara
+        
+        vector<int> vetorB(tam_mascara*tam_mascara);
+        vector<int> vetorG(tam_mascara*tam_mascara);
+        vector<int> vetorR(tam_mascara*tam_mascara);
+        
+        for (int j = 0; j < tam_mascara; j++) { // Itera sobre as linhas da máscara
+                for (int i = 0; i < tam_mascara; i++) { // Itera sobre os pixels da linha
+                vetorB[j*tam_mascara + i] = imagem_com_paddingBGR[y + j][x + i][0];
+                vetorG[j*tam_mascara + i] = imagem_com_paddingBGR[y + j][x + i][1];
+                vetorR[j*tam_mascara + i] = imagem_com_paddingBGR[y + j][x + i][2];
+                
+                }
+            }
+
+        sort(vetorB.begin(), vetorB.end());
+        sort(vetorG.begin(), vetorG.end());
+        sort(vetorR.begin(), vetorR.end());
+
+        const size_t metade = vetorB.size()/2; // index da posição mediana
+
+        return {vetorB[metade], vetorG[metade], vetorR[metade]};
+
+    } else {
+        cout << "Valor" << metodo << "para parâmetro Método de aplica_filtro() não existe" << endl;
+        return {};
+    }
+    
+
+}
+
+
+vector<vector<vector<int>>> suavizarBGR(const vector<vector<vector<int>>>& imagem, int metodo, int tam_mascara){
+    
+    int altura  = static_cast<int>(imagem.size());
+    int largura = static_cast<int>(imagem[0].size());
+
+    vector<vector<int>> mascara(tam_mascara, vector<int>(tam_mascara, 1));
+    int somaPesos = 0;
+
+    if (metodo == 0) { // Filtro Gaussiano (via Triângulo de Pascal)
+        vector<int> pesos1D;
+        if (tam_mascara == 3) {
+            pesos1D = {1, 2, 1};
+        } else if (tam_mascara == 5) {
+            pesos1D = {1, 4, 6, 4, 1};
+        } else if (tam_mascara == 7) {
+            pesos1D = {1, 6, 15, 20, 15, 6, 1};
+        } else if (tam_mascara == 9) {
+            pesos1D = {1, 8, 28, 56, 70, 56, 28, 8, 1};
+        } else {
+            pesos1D.assign(tam_mascara, 1);
+        }
+
+        somaPesos = 0;
+        for (int j = 0; j < tam_mascara; j++) {
+            for (int i = 0; i < tam_mascara; i++) {
+                mascara[j][i] = pesos1D[j] * pesos1D[i];
+                somaPesos += mascara[j][i];
+            }
+        }
+    } else if (metodo == 1) { // Filtro Box Média (tam_mascara x tam_mascara)
+        somaPesos = tam_mascara * tam_mascara;
+    }
+
+    int raio = tam_mascara / 2; // Raio inteiro da máscara (ex: 5x5 -> raio = 2)
+
+    vector<vector<vector<int>>> imagem_com_padding = adicionar_padding(imagem, raio, 255);
+
+    vector<vector<vector<int>>> suavizada(altura, vector<vector<int>>(largura, vector<int>(3, 0)));
+
+    for (int y = 0; y < altura; y++) { // opera sobre as linhas
+        for (int x = 0; x < largura; x++) { // opera sobre os elementos da coluna na linha y
+            suavizada[y][x] = aplica_filtroBGR(
+                x, y,
+                raio,
+                imagem_com_padding,
+                metodo,
+                mascara,somaPesos);
+        }
+    }
+    return suavizada;
+}
+
 vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundoCinza, int margem_fundo) {
 
     if (imagem_cinza.empty()) {
@@ -365,6 +563,45 @@ vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundo
 
             // Se a diferença de cor for maior que a tolerância, classifica como folha (1), senão fundo (0)
             if (imagem_cinza[y][x] < fundoCinza) binaria[y][x] = 1;
+        }
+    }
+
+    return binaria;
+}
+
+std::vector<std::vector<int>> binarizarBGR(
+        const std::vector<std::vector<std::vector<int>>>& imagem, 
+        const std::vector<int>& corFundo,
+        float kB,
+        float kG,
+        float kR
+    
+    ) {
+
+    if (imagem.empty()) {
+        return {{NULL}}; 
+    }
+    
+    int altura  = static_cast<int>(imagem.size());
+    int largura = static_cast<int>(imagem[0].size());
+
+    vector<vector<int>> binaria(altura, vector<int>(largura, 0));
+    
+    // constantes K por canal
+
+    
+    // Limares por canal
+    int LB = static_cast<int>(round(kB * corFundo[0])); // B
+    int LG = static_cast<int>(round(kG * corFundo[1])); // G
+    int LR = static_cast<int>(round(kR * corFundo[2])); // R
+
+
+
+    for (int y = 0; y < altura; y++) {
+        for (int x = 0; x < largura; x++) {
+            // Se a diferença de cor for maior que a tolerância, classifica como folha (1), senão fundo (0)
+            if (imagem[y][x][0] < LB && imagem[y][x][1] < LG && imagem[y][x][2] < LR) 
+                binaria[y][x] = 1;
         }
     }
 
