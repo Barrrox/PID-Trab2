@@ -5,11 +5,51 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <map>
+#include <queue>
+#include <algorithm>
 using namespace cv;
 using namespace std;
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-const int MARGEM_FUNDO = 65;
+//const int MARGEM_FUNDO = 45;
+
+// vector<vector<int>> elemento_estruturante = {
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1, 1, 1}
+// };
+
+// vector<vector<int>> elemento_estruturante = {
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1},
+//     {1, 1, 1, 1, 1, 1, 1}
+// };
+
+vector<vector<int>> elemento_estruturante = {
+    {1, 1, 1, 1, 1,},
+    {1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1},
+    {1, 1, 1, 1, 1}
+};
+
+// vector<vector<int>> elemento_estruturante = {
+//     {1, 1, 1,},
+//     {1, 1, 1,},
+//     {1, 1, 1}
+
+
+
 
 int estimarCorFundo(const Mat& imagem) {
 
@@ -154,64 +194,128 @@ vector<vector<int>> grayscale(const vector<vector<vector<int>>>& imagem) {
     return imagemCinza;
 }
 
-vector<vector<int>> suavizar(const vector<vector<int>>& imagem){
+int aplica_filtro(int x, int y, const int raio, const vector<vector<int>>& imagem_com_padding, int metodo, const vector<vector<int>>& mascara, int somaPesos){
 
-    // soma dos pesos = 256
-    vector<vector<int>> gaussiano = {
-        {1,  4,  6,  4, 1},
-        {4, 16, 24, 16, 4},
-        {6, 24, 36, 24, 6},
-        {4, 16, 24, 16, 4},
-        {1,  4,  6,  4, 1}
-    };
-    // soma dos pesos = 25
-    vector<vector<int>> box = {
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1}
-    };
+    // Se filtro gaussiano (0) ou box (1)
+    if (metodo <= 1){
+        
+        int soma = 0;
+            
+            for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
+                for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linha
+
+                // a possicao acessada é: posicao na imagem original + deslocamento do padding + posição atual da mascara
+                // isso pra linha e coluna
+                    soma += imagem_com_padding[y + raio + j][x + raio + i] * mascara[j + raio][i + raio];
+    
+                }
+            }
+            // Opera o pixel
+            return static_cast<int>(round(soma / somaPesos)); 
+
+
+    } else if (metodo == 2) // Filtro por mediana
+    {
+        // Flatenizar a mascara para aplicar sorting
+        const int tam_mascara = 2*raio+1; // dimensao da mascara
+        vector<int> vetor(tam_mascara*tam_mascara);
+        for (int j = 0; j < tam_mascara; j++) { // Itera sobre as linhas da máscara
+                for (int i = 0; i < tam_mascara; i++) { // Itera sobre os pixels da linha
+                vetor[j*tam_mascara + i] = imagem_com_padding[y + j][x + i];
+                
+                }
+            }
+
+        sort(vetor.begin(), vetor.end());
+
+        const size_t metade = vetor.size()/2;
+
+        return static_cast<int>(round((vetor[metade] + vetor[metade+1])/2));
+
+    } else {
+        cout << "Valor" << metodo << "para parâmetro Método de aplica_filtro() não existe" << endl;
+        return -1;
+    }
     
 
-    vector<vector<int>> mascara = box;
+}
 
-    int somaPesos = 0;
-    for (const auto& linha : mascara) {
-        for (const auto& valor : linha) {
-            
-            somaPesos += valor;
-        }
-    }
+vector<vector<int>> suavizar(const vector<vector<int>>& imagem, int metodo=0){
+    
     
     int altura  = static_cast<int>(imagem.size());
     int largura = static_cast<int>(imagem[0].size());
 
-    int raio = static_cast<int>(mascara.size()/2);
+    // vector<vector<int>> mascara(5, vector<int>(5));
+    vector<vector<int>> mascara(7, vector<int>(7));
+    int somaPesos = 0;
+
+    if (metodo == 0){ // Filtro Gaussiano 5x5
+    
+    // mascara = {
+    //     {1,  4,  6,  4, 1},
+    //     {4, 16, 24, 16, 4},
+    //     {6, 24, 36, 24, 6},
+    //     {4, 16, 24, 16, 4},
+    //     {1,  4,  6,  4, 1}
+    // };
+
+    // somaPesos = 256;
+
+    // // 7x7
+    mascara = {
+        { 1,   6,  15,  20,  15,   6,  1},
+        { 6,  36,  90, 120,  90,  36,  6},
+        {15,  90, 225, 300, 225,  90, 15},
+        {20, 120, 300, 400, 300, 120, 20},
+        {15,  90, 225, 300, 225,  90, 15},
+        { 6,  36,  90, 120,  90,  36,  6},
+        { 1,   6,  15,  20,  15,   6,  1}
+    };
+
+    somaPesos = 4096;
+
+    } else if (metodo == 1) // Filtro box 5x5
+    {
+    
+    // mascara = {
+    //     {1, 1, 1, 1, 1},
+    //     {1, 1, 1, 1, 1},
+    //     {1, 1, 1, 1, 1},
+    //     {1, 1, 1, 1, 1},
+    //     {1, 1, 1, 1, 1}
+    // };
+    // somaPesos = 25;
+
+    mascara = {
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1},
+        {1, 1, 1, 1, 1, 1, 1}
+    };
+    somaPesos = 49;
+
+    }
+
+    int raio = static_cast<int>(mascara.size()/2); // Raio inteiro da máscara (ex: 5x5 -> raio = 2)
 
     vector<vector<int>> imagem_com_padding = adicionar_padding(imagem, raio, 255);
 
     vector<vector<int>> suavizada(altura, vector<int>(largura, 0));
 
-    
-        for (int y = 0; y < altura; y++) { // opera sobre as linhas
-            for (int x = 0; x < largura; x++) { // opera sobre os elementos da coluna na linha y
-                int soma = 0;
-                
-                for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
-                    for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linha
-
-                    // a possicao acessada é: posicao na imagem original + deslocamento do padding + posição atual da mascara
-                    // isso pra linha e coluna
-                        soma += imagem_com_padding[y + raio + j][x + raio + i] * mascara[j + raio][i + raio];
-        
-                    }
-                }
-                // Opera o pixel
-                suavizada[y][x] = soma / somaPesos; 
-                
-            }
+    for (int y = 0; y < altura; y++) { // opera sobre as linhas
+        for (int x = 0; x < largura; x++) { // opera sobre os elementos da coluna na linha y
+            suavizada[y][x] = aplica_filtro(
+                x, y,
+                raio,
+                imagem_com_padding,
+                metodo,
+                mascara,somaPesos);
         }
+    }
     return suavizada;
 }
 
@@ -227,6 +331,7 @@ vector<vector<int>> binarizar(const vector<vector<int>>& imagem_cinza, int fundo
     vector<vector<int>> binaria(altura, vector<int>(largura, 0));
     
     // Cor média de referência das bordas já em gray scale
+    int MARGEM_FUNDO = 45;
     fundoCinza -= MARGEM_FUNDO; // revisar e incluior no relatório
 
     for (int y = 0; y < altura; y++) {
@@ -246,15 +351,6 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria){ //  coloquei con
     // Passamos essa máscara por cada pixel da imagem e comparamos a máscara com a 
     // os vizinhos do pixel. Se todos forem iguais, o pixel é 1, senão o pixel é 0.
 
-
-
-    vector<vector<int>> elemento_estruturante = {
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1},
-        {1, 1, 1, 1, 1}
-    };
     
     int altura = static_cast<int>(binaria.size());
     int largura = static_cast<int>(binaria[0].size());
@@ -292,6 +388,43 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria){ //  coloquei con
 
 }
 
+vector<vector<int>> dilatacao(const vector<vector<int>> &binaria){
+
+
+
+    // };
+
+    int altura = static_cast<int>(binaria.size());
+    int largura = static_cast<int>(binaria[0].size());
+    int raio = static_cast<int>(elemento_estruturante.size()) / 2;
+
+    vector<vector<int>> imagem_dilatada(altura, vector<int>(largura, 0));
+
+    vector<vector<int>> binaria_com_padding = adicionar_padding(binaria, raio, 0);
+
+    for (int y = 0; y < altura; y++) {
+        for (int x = 0; x < largura; x++){ // Itera cada pixel da linha
+            bool dilatar = false;
+
+            for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
+                for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linha
+
+                    if (elemento_estruturante[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
+                        dilatar = true;
+                        break; // Se encontrou pelo menos um pixel 1, já ativa e encerra a linha
+                    }
+                }
+                if (dilatar) break; // Já encontrou um pixel ativo para este (y, x), para o processamento da máscara
+            }
+
+            imagem_dilatada[y][x] = dilatar ? 1 : 0;
+        }
+    }
+    
+    return imagem_dilatada;
+
+}
+
 vector<vector<int>> subtrair(const vector<vector<int>> &A, const vector<vector<int>> &B){
 
     vector<vector<int>> C = A;
@@ -307,12 +440,14 @@ vector<vector<int>> subtrair(const vector<vector<int>> &A, const vector<vector<i
     return C;
 }
 
-int contadorBorda(const std::vector<std::vector<int>> &imagem){ // roda 1 vez, arrumar pra pegar toda a imagem de uma vez pra evitar reprocesso
+vector<ponto> contornarBorda(const std::vector<std::vector<int>> &imagem, ponto ponto_inicial){ // roda 1 vez, arrumar pra pegar toda a imagem de uma vez pra evitar reprocesso
 
-    std::vector<std::vector<int>> imagem_com_padding = adicionar_padding(imagem, 1, 0);
+    int padding = 1;
+
+    std::vector<std::vector<int>> imagem_com_padding = adicionar_padding(imagem, padding, 0);
     
-    int altura = static_cast<int>(imagem.size());
-    int largura = static_cast<int>(imagem[0].size());
+    int altura = static_cast<int>(imagem_com_padding.size());
+    int largura = static_cast<int>(imagem_com_padding[0].size());
     
     vector<ponto> pontos_ordenados;
    
@@ -330,25 +465,33 @@ int contadorBorda(const std::vector<std::vector<int>> &imagem){ // roda 1 vez, a
     int nx = 0;
     int ny =  0;
 
-    ponto inicio = {-1, -1}; // salva o começo do contorno
-    ponto b = {-1,-1}; // y x
-    ponto c = {-1,-1}; // y x
+    ponto inicio = {ponto_inicial.y + padding, ponto_inicial.x + padding}; // salva o começo do contorno (ajustado pelo padding)
+    ponto b = inicio; // y x
+    ponto c = {inicio.y, inicio.x - 1}; // vizinho oeste de b
+    pontos_ordenados.push_back(b);
    
     
-    for (int y = 1; y < altura-1; y++) { // Itera sobre as linhas // skippa o padding
-        for (int x = 1; x < largura-1; x++) { // Itera cada pixel da linha // skippa o padding
+    // for (int y = 1; y < altura-1; y++) { // Itera sobre as linhas // skippa o padding
+    //     for (int x = 1; x < largura-1; x++) { // Itera cada pixel da linha // skippa o padding
 
-            if (imagem[y][x] == 1){ // encontrou uma fronteira // passo 1
+    //         if (imagem_com_padding[y][x] == 1){ // encontrou uma fronteira // passo 1
 
-                // passo 2
-                b = {y, x};
-                c = {y,x-1}; // vizinho oeste de b, 
-                inicio = b;
+    //             // passo 2
+    //             inicio = {y, x};
+    //             b = inicio;
+    //             c = {y,x-1}; // vizinho oeste de b, 
+                
 
-                pontos_ordenados.push_back(b); // salva
-            }
-        }
-    }
+    //             pontos_ordenados.push_back(b); // salva
+
+    //             break;
+    //         }
+    //     if (inicio.x != -1){
+    //         break;
+    //     }
+            
+    //     }
+    // }
 
     // Dicionarios para guardar a conversão entre posição relativa
     // espacial e a direção cardial
@@ -366,17 +509,17 @@ int contadorBorda(const std::vector<std::vector<int>> &imagem){ // roda 1 vez, a
     dicionario[{-1,0}] = 6;
     dicionario[{-1,-1}] = 7;
 
-    map<int, ponto> dicionario_invertido;
+    // map<int, ponto> dicionario_invertido;
 
-    dicionario_invertido[0] = {0, -1};
-    dicionario_invertido[1] = {1,-1};
-    dicionario_invertido[2] = {1,0};
-    dicionario_invertido[3] = {1,1};
-    dicionario_invertido[4] = {0,1};
-    dicionario_invertido[5] = {-1,1};
-    dicionario_invertido[6] = {-1,0};
-    dicionario_invertido[7] = {-1,-1};
-    dicionario_invertido[-1] = {-1,-1}; // Correção para quando chave = -1
+    // dicionario_invertido[0] = {0, -1};
+    // dicionario_invertido[1] = {1,-1};
+    // dicionario_invertido[2] = {1,0};
+    // dicionario_invertido[3] = {1,1};
+    // dicionario_invertido[4] = {0,1};
+    // dicionario_invertido[5] = {-1,1};
+    // dicionario_invertido[6] = {-1,0};
+    // dicionario_invertido[7] = {-1,-1};
+    // dicionario_invertido[-1] = {-1,-1}; // Correção para quando chave = -1
 
     int sentido_x = c.x - b.x; 
     int sentido_y = c.y - b.y;
@@ -403,37 +546,78 @@ c/n7 b  n3
     // c está em imagem[b.y + ny][b.x + nx];
 */
     
-    // continua enquanto não fizer a volta toda
-    while(b.x != inicio.x && b.y != inicio.y){
-       
-        // varre em sentido horário // passo 3
+    // Dicionário: converte {dx, dy} na direção cardeal (0..7)                                                                                       
+                                                                                                                                          
+                                                                                                                                                            
+    do {                                                                                                                                             
+        bool achou_vizinho = false;                                                                                                                  
+                                                                                                                                                        
+        for (int k = 0; k < 8; k++) {                                                                                                                
+            int d = (indice + k) % 8;                                                                                                                
+            int ny = b.y + dy[d];                                                                                                                    
+            int nx = b.x + dx[d];                                                                                                                    
+                                                                                                                                                        
+            if (imagem_com_padding[ny][nx] == 1) {                                                                                                   
+                // c recebe o vizinho anterior (de fundo) na busca horária: (d + 7) % 8                                                              
+                int d_ant = (d + 7) % 8;                                                                                                             
+                c = { b.y + dy[d_ant], b.x + dx[d_ant] };                                                                                            
+                                                                                                                                                        
+                // b avança para o novo pixel de borda                                                                                               
+                b = { ny, nx };                                                                                                                      
+                                                                                                                                                        
+                // Atualiza o índice inicial da próxima busca horária (posição de c relativa ao novo b)                                              
+                indice = dicionario[{c.x - b.x, c.y - b.y}];                                                                                         
+                                                                                                                                                        
+                if (b.x != inicio.x || b.y != inicio.y) {                                                                                            
+                    pontos_ordenados.push_back(b);                                                                                                   
+                }                                                                                                                                    
+                achou_vizinho = true;                                                                                                                
+                break;                                                                                                                               
+            }                                                                                                                                        
+        }                                                                                                                                            
+                                                                                                                                                        
+        if (!achou_vizinho) break; // Caso de pixel isolado (sem vizinhos == 1)                                                                      
+                                                                                                                                                        
+    } while (b.x != inicio.x || b.y != inicio.y);
 
-        for(int k = 0; k < 8; k++){
+    // remove o padding
+    for (ponto& p : pontos_ordenados) {                                                                                                                  
+        p.y -= 1;                                                                                                                                        
+        p.x -= 1;                                                                                                                                        
+    } 
 
-            d = (indice + k) % 8;
-            ny = b.y + dy[d];
-            nx = b.x + dx[d];
-            
-            if (imagem[ny][nx] == 1) { // novo pixel de contorno // passo 3 pra  4
+//    return static_cast<int>(pontos_ordenados.size());
+    return pontos_ordenados;
+}
+// Aplicar morfologia matemática
 
-                // passo 4
-                b = {ny, nx};
-                ponto c2 = dicionario_invertido[indice-1]; // indice-1 da a posiução de c relativa a b
+void identificar_folhas(const std::vector<std::vector<int>>& imagem_binarizada){
 
-                c.y += c2.y; // aqui ja é o c novo
-                c.x += c2.x;
+    int altura = static_cast<int>(imagem_binarizada.size());
+    int largura = static_cast<int>(imagem_binarizada[0].size()); 
+
+    int index =  2;
+
+    for(long int i = 0; i < altura; i++){
+        for(long int j = 0; j < largura; j++){
+
+            if (imagem_binarizada[i][j] == 1){
+                ponto ponto_inicial = {i, j};
+                vector<ponto> pontos_de_borda = contornarBorda(&imagem_binarizada, ponto_inicial);
                 
-                d = indice-1; // na prox iteração a busca em sentido horário começa da posição relativa de c para b
+
+                //fillpoly?
+
                 
-                pontos_ordenados.push_back(b);
-                break;
+                for (const ponto& ponto : pontos_de_borda)
+                    imagem_binarizada[ponto.y][ponto.x] = index;
+                index++;
             }
         }
     }
-
-    return static_cast<int>(pontos_ordenados.size());
 }
-// Aplicar morfologia matemática
+
+
 vector<vector<vector<int>>> adicionar_bordas(vector<vector<vector<int>>>& imagem, vector<vector<int>>& bordas){
 
     int altura = static_cast<int>(imagem.size());

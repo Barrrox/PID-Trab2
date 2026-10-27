@@ -11,7 +11,14 @@ using namespace cv;
 
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-//#define TOLERANCIA 0.3 // Deixado nulo para escolher depois
+/* Suaviz a imagem. Métodos:
+0 = Filtro Gaussiano 5x5
+1 = Filtro Box Média 5x5
+2 = Filtro por Mediana 5x5
+*/
+
+#define metodoSuavizao 1
+
 
 int main() {
 
@@ -75,15 +82,27 @@ int main() {
         vector<vector<int>> img_cinza = grayscale(imagem);
 
         // suavizar imagem com kernel 5x5 de média.
-        vector<vector<int>> img_suavizada = suavizar(img_cinza);
+        vector<vector<int>> img_suavizada = suavizar(img_cinza, metodoSuavizao);
 
         // Binarizar imagem, já convertendo para uma matriz no C++
         vector<vector<int>> img_bin = binarizar(img_suavizada, corFundo);
 
+        vector<vector<int>> imagem_dilatada = dilatacao(img_bin);
+
+        vector<vector<int>> imagem_dilatadassa = dilatacao(imagem_dilatada);
+
         // faz erosao fixa de 1 pixel
         vector<vector<int>> imagem_erodida = erosao(img_bin);
 
+        // vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada);
+
+        // vector<vector<int>> imagem_abertura = dilatacao(imagem_erodida);
+
         vector<vector<int>> bordas = subtrair(img_bin, imagem_erodida);
+
+        // vector<vector<int>> bordas_fechamento = subtrair(img_bin, imagem_fechamento);
+
+        // vector<vector<int>> bordas_abertura = subtrair(img_bin, imagem_abertura);
         
         // Destaca as bordas em vermelho na imagem original
 
@@ -127,6 +146,20 @@ int main() {
             }
         }
 
+        // cv::Mat mat_dilatada(static_cast<int>(imagem_dilatada.size()), static_cast<int>(imagem_dilatada[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(imagem_dilatada.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(imagem_dilatada[0].size()); x++) {
+        //         mat_dilatada.at<uchar>(y, x) = static_cast<uchar>(imagem_dilatada[y][x] * 255);
+        //     }
+        // }
+
+        // cv::Mat mat_dilatadassa(static_cast<int>(imagem_dilatadassa.size()), static_cast<int>(imagem_dilatadassa[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(imagem_dilatadassa.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(imagem_dilatadassa[0].size()); x++) {
+        //         mat_dilatadassa.at<uchar>(y, x) = static_cast<uchar>(imagem_dilatadassa[y][x] * 255);
+        //     }
+        // }
+
         cv::Mat mat_erodida(static_cast<int>(imagem_erodida.size()), static_cast<int>(imagem_erodida[0].size()), CV_8UC1);
         for (int y = 0; y < static_cast<int>(imagem_erodida.size()); y++) {
             for (int x = 0; x < static_cast<int>(imagem_erodida[0].size()); x++) {
@@ -134,12 +167,40 @@ int main() {
             }
         }
 
+        // cv::Mat mat_abertura(static_cast<int>(imagem_abertura.size()), static_cast<int>(imagem_abertura[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(imagem_abertura.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(imagem_abertura[0].size()); x++) {
+        //         mat_abertura.at<uchar>(y, x) = static_cast<uchar>(imagem_abertura[y][x] * 255);
+        //     }
+        // }
+
+        // cv::Mat mat_fechamento(static_cast<int>(imagem_fechamento.size()), static_cast<int>(imagem_fechamento[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(imagem_fechamento.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(imagem_fechamento[0].size()); x++) {
+        //         mat_fechamento.at<uchar>(y, x) = static_cast<uchar>(imagem_fechamento[y][x] * 255);
+        //     }
+        // }
+
         cv::Mat mat_bordas(static_cast<int>(bordas.size()), static_cast<int>(bordas[0].size()), CV_8UC1);
         for (int y = 0; y < static_cast<int>(bordas.size()); y++) {
             for (int x = 0; x < static_cast<int>(bordas[0].size()); x++) {
                 mat_bordas.at<uchar>(y, x) = static_cast<uchar>(bordas[y][x] * 255);
             }
         }
+
+        // cv::Mat mat_bordas_fechamento(static_cast<int>(bordas_fechamento.size()), static_cast<int>(bordas_fechamento[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(bordas_fechamento.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(bordas_fechamento[0].size()); x++) {
+        //         mat_bordas_fechamento.at<uchar>(y, x) = static_cast<uchar>(bordas_fechamento[y][x] * 255);
+        //     }
+        // }
+        
+        // cv::Mat mat_bordas_abertura(static_cast<int>(bordas_abertura.size()), static_cast<int>(bordas_abertura[0].size()), CV_8UC1);
+        // for (int y = 0; y < static_cast<int>(bordas_abertura.size()); y++) {
+        //     for (int x = 0; x < static_cast<int>(bordas_abertura[0].size()); x++) {
+        //         mat_bordas_abertura.at<uchar>(y, x) = static_cast<uchar>(bordas_abertura[y][x] * 255);
+        //     }
+        // }
 
         // Converte imagem com bordas vermelhas (3 canais BGR) para cv::Mat (CV_8UC3)
         cv::Mat mat_com_bordas(static_cast<int>(imagem_com_bordas.size()), static_cast<int>(imagem_com_bordas[0].size()), CV_8UC3);
@@ -160,7 +221,13 @@ int main() {
         imwrite("output/3_suavizada.bmp", mat_suavizada);
         imwrite("output/4_binarizada.bmp", mat_bin);
         imwrite("output/5_erodida.bmp", mat_erodida);
+        // imwrite("output/5_1_dilatacao.bmp", mat_dilatada);
+        // imwrite("output/5_1_1_dilatacao2x.bmp", mat_dilatadassa);
+        // imwrite("output/5_2_fechamento.bmp", mat_fechamento);
+        // imwrite("output/5_3_abertura.bmp", mat_abertura);
         imwrite("output/6_bordas.bmp", mat_bordas);
+        // imwrite("output/6_1_bordas_fechamento.bmp", mat_bordas_fechamento);
+        // imwrite("output/6_2_bordas_abertura.bmp", mat_bordas_abertura);
         imwrite("output/7_com_bordas.bmp", mat_com_bordas);
         std::cout << "Imagens das etapas salvas em output/" << std::endl;
 
@@ -196,10 +263,40 @@ int main() {
         moveWindow("5 - Erodida", 4 * espacamento, pos_y);
         imshow("5 - Erodida", mat_erodida);
 
+        // namedWindow("5.1 - Dilatacao", WINDOW_NORMAL);
+        // resizeWindow("5.1 - Dilatacao", larg_jan, alt_jan);
+        // moveWindow("5.1 - Dilatacao", 0 * espacamento, pos_y);
+        // imshow("5.1 - Dilatacao", mat_dilatada);
+
+        //  namedWindow("5.1_1 - Dilatcao2x", WINDOW_NORMAL);
+        // resizeWindow("5.1_1 - Dilatcao2x", larg_jan, alt_jan);
+        // moveWindow("5.1_1 - Dilatcao2x", 0 * espacamento, pos_y);
+        // imshow("5.1_1 - Dilatcao2x", mat_dilatadassa);
+
+        // namedWindow("5.2 - Fechamento", WINDOW_NORMAL);
+        // resizeWindow("5.2 - Fechamento", larg_jan, alt_jan);
+        // moveWindow("5.2 - Fechamento", 1 * espacamento, pos_y);
+        // imshow("5.2 - Fechamento", mat_fechamento);
+
+        // namedWindow("5.3 - Abertura", WINDOW_NORMAL);
+        // resizeWindow("5.3 - Abertura", larg_jan, alt_jan);
+        // moveWindow("5.3 - Abertura", 2 * espacamento, pos_y);
+        // imshow("5.3 - Abertura", mat_abertura);
+
         namedWindow("6 - Bordas", WINDOW_NORMAL);
         resizeWindow("6 - Bordas", larg_jan, alt_jan);
-        moveWindow("6 - Bordas", 0 * espacamento, pos_y + espacamento + 30);
+        moveWindow("6 - Bordas", 3 * espacamento, pos_y + espacamento + 30);
         imshow("6 - Bordas", mat_bordas);
+
+        // namedWindow("6.1 - Bordas_fechamento", WINDOW_NORMAL);
+        // resizeWindow("6.1 - Bordas_fechamento", larg_jan, alt_jan);
+        // moveWindow("6.1 - Bordas_fechamento", 4 * espacamento, pos_y + espacamento + 30);
+        // imshow("6.1 - Bordas_fechamento", mat_bordas_fechamento);
+
+        // namedWindow("6.2 - Bordas_abertura", WINDOW_NORMAL);
+        // resizeWindow("6.2 - Bordas_abertura", larg_jan, alt_jan);
+        // moveWindow("6.2 - Bordas_abertura", 0 * espacamento, pos_y + espacamento + 30);
+        // imshow("6.2 - Bordas_abertura", mat_bordas_abertura);
 
         namedWindow("7 - Com Bordas", WINDOW_NORMAL);
         resizeWindow("7 - Com Bordas", larg_jan, alt_jan);
