@@ -516,6 +516,9 @@ c/n7 b  n3
     // Dicionário: converte {dx, dy} na direção cardeal (0..7)                                                                                       
                                                                                                                                           
                                                                                                                                                             
+    int passos = 0;
+    const int max_passos = altura * largura;
+                                                                                                                                                            
     do {                                                                                                                                             
         bool achou_vizinho = false;                                                                                                                  
                                                                                                                                                         
@@ -544,8 +547,9 @@ c/n7 b  n3
         }                                                                                                                                            
                                                                                                                                                         
         if (!achou_vizinho) break; // Caso de pixel isolado (sem vizinhos == 1)                                                                      
+        passos++;
                                                                                                                                                         
-    } while (b.x != inicio.x || b.y != inicio.y);
+    } while ((b.x != inicio.x || b.y != inicio.y) && passos < max_passos);
 
     // remove o padding
     for (ponto& p : pontos_ordenados) {                                                                                                                  
@@ -558,30 +562,61 @@ c/n7 b  n3
 }
 // Aplicar morfologia matemática
 
-void identificar_folhas(const std::vector<std::vector<int>>& imagem_binarizada){
+int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int limite_max_folhas){
 
     int altura = static_cast<int>(imagem_binarizada.size());
     int largura = static_cast<int>(imagem_binarizada[0].size()); 
 
-    int index =  2;
+    const int dx[8] = { 0,  1, 1, 1, 0, -1, -1, -1 };
+    const int dy[8] = {-1, -1, 0, 1, 1,  1,  0, -1 };
 
-    for(long int i = 0; i < altura; i++){
-        for(long int j = 0; j < largura; j++){
+    int index = 2;
 
-            if (imagem_binarizada[i][j] == 1){
+    for (int i = 0; i < altura; i++) {
+        for (int j = 0; j < largura; j++) {
+
+            if (imagem_binarizada[i][j] == 1) {
+                int folhas_atuais = index - 2 + 1;
+                if (limite_max_folhas > 0 && folhas_atuais > limite_max_folhas) {
+                    return folhas_atuais; // Otimização: já estourou o limite máximo de folhas
+                }
+
                 ponto ponto_inicial = {i, j};
-                vector<ponto> pontos_de_borda = contornarBorda(&imagem_binarizada, ponto_inicial);
+                vector<ponto> pontos_de_borda = contornarBorda(imagem_binarizada, ponto_inicial);
                 
+                // Marca os pontos do contorno externo
+                for (const ponto& p : pontos_de_borda) {
+                    imagem_binarizada[p.y][p.x] = index;
+                }
 
-                //fillpoly?
+                // Limpeza em vizinhança-8 (Flood Fill / BFS) para rotular toda a espessura daquela borda
+                queue<ponto> fila;
+                fila.push(ponto_inicial);
+                imagem_binarizada[i][j] = index;
 
-                
-                for (const ponto& ponto : pontos_de_borda)
-                    imagem_binarizada[ponto.y][ponto.x] = index;
+                while (!fila.empty()) {
+                    ponto atual = fila.front();
+                    fila.pop();
+
+                    for (int k = 0; k < 8; k++) {
+                        int ny = atual.y + dy[k];
+                        int nx = atual.x + dx[k];
+
+                        if (ny >= 0 && ny < altura && nx >= 0 && nx < largura) {
+                            if (imagem_binarizada[ny][nx] == 1) {
+                                imagem_binarizada[ny][nx] = index;
+                                fila.push({ny, nx});
+                            }
+                        }
+                    }
+                }
+
                 index++;
             }
         }
     }
+
+    return index - 2;
 }
 
 

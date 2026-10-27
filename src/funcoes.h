@@ -41,8 +41,10 @@ std::vector<std::vector<int>> subtrair(const std::vector<std::vector<int>>& A, c
 
 std::vector<std::vector<std::vector<int>>> adicionar_bordas(std::vector<std::vector<std::vector<int>>>& imagem, std::vector<std::vector<int>>& bordas);
 
-int contadorBorda(const std::vector<std::vector<int>>& imagem);
+std::vector<ponto> contornarBorda(const std::vector<std::vector<int>> &imagem, ponto ponto_inicial);
 // auxiliares (nao sao chamadas no main)
+
+int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int limite_max_folhas = -1);
 
 std::vector<std::vector<int>> adicionar_padding(const std::vector<std::vector<int>>& imagem, int tamanho = 1, int valor = 0);
                                                 
