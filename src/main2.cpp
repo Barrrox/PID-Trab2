@@ -105,21 +105,24 @@ int main() {
         vector<vector<vector<int>>> img_suavizada = suavizarBGR(imagem, METODO_SUAVIZACAO, TAM_SUAVIZACAO);
         vector<vector<int>> img_bin = binarizarBGR(img_suavizada, corFundoBGR, KB, KG, KR);
 
-        // 3. Extrai fronteira morfologica: bordas = A - (A (-) B)
-        vector<vector<int>> imagem_erodida = erosao(img_bin, TAM_EE);
-        vector<vector<int>> bordas = subtrair(img_bin, imagem_erodida);
+        // 3. Fechamento morfologico (dilatacao + erosao) para fechar buracos internos
+        vector<vector<int>> imagem_dilatada = dilatacao(img_bin, TAM_EE);
+        vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada, TAM_EE);
 
-        // 4. Rastreia as fronteiras de cada folha (Gonzalez & Woods) e conta pixels
-        vector<vector<int>> bordas_copia = bordas;
-        vector<vector<ponto>> folhas = identificar_folhas(bordas_copia);
+        // 4. Extrai fronteira morfologica: bordas = Fechamento - (Fechamento (-) B)
+        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, TAM_EE);
+        vector<vector<int>> bordas = subtrair(imagem_fechamento, imagem_erodida);
+
+        // 5. Destaca todas as bordas em vermelho na imagem original (antes de rotular bordas)
+        vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
+
+        // 6. Rastreia as fronteiras de cada folha (Gonzalez & Woods) e conta pixels
+        vector<vector<ponto>> folhas = identificar_folhas(bordas);
 
         std::cout << "\n[" << nome_imagem << "] Total de folhas: " << folhas.size() << std::endl;
         for (size_t k = 0; k < folhas.size(); k++) {
             std::cout << "  Folha " << (k + 1) << ": " << folhas[k].size() << " pixels na fronteira" << std::endl;
         }
-
-        // 5. Destaca as bordas em vermelho na imagem original
-        vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
 
         ///////////////////////////////////////////////////////////////////////////
         ////////////////////////////////// PLOTS //////////////////////////////////
