@@ -870,9 +870,6 @@ vector<vector<ponto>> identificar_folhas(std::vector<std::vector<int>>& imagem_b
     vector<vector<ponto>> contornos = {};
     vector<ponto> pontos_de_borda;
 
-    const int dx[8] = { 0,  1, 1, 1, 0, -1, -1, -1 };
-    const int dy[8] = {-1, -1, 0, 1, 1,  1,  0, -1 };
-
     int index = 2;
 
     for (int i = 0; i < altura; i++) {
@@ -889,28 +886,6 @@ vector<vector<ponto>> identificar_folhas(std::vector<std::vector<int>>& imagem_b
                 }
 
                 contornos.push_back(pontos_de_borda);
-
-                // Limpeza em vizinhança-8 (Flood Fill / BFS) para rotular toda a espessura daquela borda
-                queue<ponto> fila;
-                fila.push(ponto_inicial);
-                imagem_binarizada[i][j] = index;
-
-                while (!fila.empty()) {
-                    ponto atual = fila.front();
-                    fila.pop();
-
-                    for (int k = 0; k < 8; k++) {
-                        int ny = atual.y + dy[k];
-                        int nx = atual.x + dx[k];
-
-                        if (ny >= 0 && ny < altura && nx >= 0 && nx < largura) {
-                            if (imagem_binarizada[ny][nx] == 1) {
-                                imagem_binarizada[ny][nx] = index;
-                                fila.push({ny, nx});
-                            }
-                        }
-                    }
-                }
 
                 index++;
             }
