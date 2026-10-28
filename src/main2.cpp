@@ -16,6 +16,7 @@ const int METODO_SUAVIZACAO = 1; // 0 = Gaussiano, 1 = Media, 2 = Mediana
 const int TAM_SUAVIZACAO = 7;
 const int TAM_EE = 5;
 const int TAM_EE_extracao_borda = 3; // Especifico para extração de borda
+const size_t LIMIAR_MIN_PIXELS = 500;
 const float KB = 0.43f;
 const float KG = 0.68f;
 const float KR = 0.68f;
@@ -118,7 +119,15 @@ int main() {
         vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
 
         // 6. Rastreia as fronteiras de cada folha (Gonzalez & Woods) e conta pixels
-        vector<vector<ponto>> folhas = identificar_folhas(bordas);
+        vector<vector<ponto>> todas_folhas = identificar_folhas(bordas);
+
+        // Filtra ruidos (< 500 pixels)
+        vector<vector<ponto>> folhas;
+        for (const auto& f : todas_folhas) {
+            if (f.size() >= LIMIAR_MIN_PIXELS) {
+                folhas.push_back(f);
+            }
+        }
 
         std::cout << "\n[" << nome_imagem << "] Total de folhas: " << folhas.size() << std::endl;
         for (size_t k = 0; k < folhas.size(); k++) {
