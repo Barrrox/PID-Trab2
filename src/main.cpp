@@ -96,7 +96,6 @@ int main() {
 
         // Identifica as folhas e extrai os contornos ordenados por indice
         vector<vector<ponto>> contornos = identificar_folhas(bordas);
-        //vector<vector<vector<int>>> imagem_temp = imagem;
 
 
         cout << "Altura:" << img.rows << endl;
@@ -155,6 +154,15 @@ int main() {
 
         // Converte imagem com bordas (3 canais BGR) para cv::Mat (CV_8UC3)
         cv::Mat mat_com_bordas(static_cast<int>(imagem_com_bordas.size()), static_cast<int>(imagem_com_bordas[0].size()), CV_8UC3);
+        for (int y = 0; y < static_cast<int>(imagem_com_bordas.size()); y++) {
+            for (int x = 0; x < static_cast<int>(imagem_com_bordas[0].size()); x++) {
+                mat_com_bordas.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                    static_cast<uchar>(imagem_com_bordas[y][x][0]),
+                    static_cast<uchar>(imagem_com_bordas[y][x][1]),
+                    static_cast<uchar>(imagem_com_bordas[y][x][2])
+                );
+            }
+        }
 
         // Cria pasta output/ se nao existir e salva as imagens de cada etapa
         create_directories("output");
@@ -166,7 +174,8 @@ int main() {
         imwrite("output/5_fechamento.bmp", mat_fechamento);
         imwrite("output/6_erodida.bmp", mat_erodida);
         imwrite("output/7_bordas.bmp", mat_bordas);
-        std::cout << "Imagens das etapas 1 a 7 salvas em output/" << std::endl;
+        imwrite("output/8_com_bordas.bmp", mat_com_bordas);
+        std::cout << "Imagens das etapas 1 a 8 salvas em output/" << std::endl;
 
         bool encerrar = false;
         for (size_t i = 0; i < contornos.size(); i++) {
@@ -206,8 +215,6 @@ int main() {
             // Volta o contorno atual para BRANCO antes de pintar o proximo
             imagem = adicionar_bordas_unitaria(imagem, contornos[i], {255, 255, 255}); //  B G R
         }
-
-        imwrite("output/8_com_bordas.bmp", mat_com_bordas);
 
         if (encerrar) {
             destroyAllWindows();

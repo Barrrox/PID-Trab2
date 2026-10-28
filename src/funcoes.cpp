@@ -579,7 +579,7 @@ std::vector<std::vector<int>> binarizarBGR(
     ) {
 
     if (imagem.empty()) {
-        return {{NULL}}; 
+        return {}; 
     }
     
     int altura  = static_cast<int>(imagem.size());
