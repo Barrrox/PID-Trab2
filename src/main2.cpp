@@ -12,7 +12,12 @@ using namespace cv;
 
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-//#define TOLERANCIA 0.3 // Deixado nulo para escolher depois
+const int METODO_SUAVIZACAO = 2; // 0 = Gaussiano, 1 = Media, 2 = Mediana
+const int TAM_SUAVIZACAO = 3;
+const int TAM_EE = 5;
+const float KB = 0.43f;
+const float KG = 0.68f;
+const float KR = 0.68f;
 
 int main() {
 
@@ -70,95 +75,74 @@ int main() {
         "IMG_20230504_091510.bmp",
     };
 
-    // Usando const& para evitar cópias desnecessárias de string
-    
-
-
-    // mudar essa condição do while
-    // Deixa o usuário escolher qual imagem processar agora
+    create_directories("output2");
 
     for (const std::string& nome_imagem : imagens) {
 
-            string caminho_imagem = "imagens/" + nome_imagem;
+        string caminho_imagem = "imagens/" + nome_imagem;
 
-            // Verifica se o arquivo realmente existe ou se caminho vazio
-            if (caminho_imagem.empty() || !exists(caminho_imagem)) {
-                std::cout << "Erro: O arquivo nao foi encontrado: " << caminho_imagem << std::endl;
-                continue;
-            }
+        // Verifica se o arquivo realmente existe ou se caminho vazio
+        if (caminho_imagem.empty() || !exists(caminho_imagem)) {
+            std::cout << "Erro: O arquivo nao foi encontrado: " << caminho_imagem << std::endl;
+            continue;
+        }
 
-            cv::Mat img = imread(caminho_imagem);
+        cv::Mat img = imread(caminho_imagem);
+        if (img.empty()) {
+            std::cout << "Erro ao abrir a imagem: " << caminho_imagem << std::endl;
+            continue;
+        }
 
-            ///////////////////////////////////////////////////////////////////////////
-            //////////////////////// Pipeline de processamento ////////////////////////
-            ///////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////
+        //////////////////////// Pipeline de processamento ////////////////////////
+        ///////////////////////////////////////////////////////////////////////////
 
-            // Estima a cor do fundo em cinza
-            int corFundo = estimarCorFundo(img);
+        // 1. Estima a cor do fundo em BGR e converte cv::Mat para matriz C++
+        vector<int> corFundoBGR = estimarCorFundoBGR(img);
+        vector<vector<vector<int>>> imagem = CV2vectorvector(img);
 
-            // Converte tipo cv::Mat para matriz C++
-            vector<vector<vector<int>>> imagem = CV2vectorvector(img);
+        // 2. Suaviza em BGR (Mediana 3x3) e binariza pelos limiares dinâmicos
+        vector<vector<vector<int>>> img_suavizada = suavizarBGR(imagem, METODO_SUAVIZACAO, TAM_SUAVIZACAO);
+        vector<vector<int>> img_bin = binarizarBGR(img_suavizada, corFundoBGR, KB, KG, KR);
 
-            // Transforma para gray scale
-            vector<vector<int>> img_cinza = grayscale(imagem);
+        // 3. Extrai fronteira morfologica: bordas = A - (A (-) B)
+        vector<vector<int>> imagem_erodida = erosao(img_bin, TAM_EE);
+        vector<vector<int>> bordas = subtrair(img_bin, imagem_erodida);
 
-            for (int i = 0; i < 3; i++) { 
+        // 4. Rastreia as fronteiras de cada folha (Gonzalez & Woods) e conta pixels
+        vector<vector<int>> bordas_copia = bordas;
+        vector<vector<ponto>> folhas = identificar_folhas(bordas_copia);
 
-                // suavizar imagem com kernel 5x5 de média.
-                vector<vector<int>> img_suavizada = suavizar(img_cinza, i);
-                
+        std::cout << "\n[" << nome_imagem << "] Total de folhas: " << folhas.size() << std::endl;
+        for (size_t k = 0; k < folhas.size(); k++) {
+            std::cout << "  Folha " << (k + 1) << ": " << folhas[k].size() << " pixels na fronteira" << std::endl;
+        }
 
-                // Binarizar imagem, já convertendo para uma matriz no C++
-                vector<vector<int>> img_bin = binarizar(img_suavizada, corFundo);
+        // 5. Destaca as bordas em vermelho na imagem original
+        vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
 
+        ///////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////// PLOTS //////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////
 
-                // // faz erosao fixa de 1 pixel
-                vector<vector<int>> imagem_erodida = erosao(img_bin);
-
-                vector<vector<int>> imagem_fechamento = dilatacao(imagem_erodida);
-
-                // vector<vector<int>> bordas = subtrair(img_bin, imagem_erodida);
-                
-                // // Destaca as bordas em vermelho na imagem original
-
-                // vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
-
-                ///////////////////////////////////////////////////////////////////////////
-                ////////////////////////////////// PLOTS //////////////////////////////////
-                ///////////////////////////////////////////////////////////////////////////
-
-                // // Converte imagem com bordas vermelhas (3 canais BGR) para cv::Mat (CV_8UC3)
-                // cv::Mat mat_com_bordas(static_cast<int>(imagem_com_bordas.size()), static_cast<int>(imagem_com_bordas[0].size()), CV_8UC3);
-                // for (int y = 0; y < static_cast<int>(imagem_com_bordas.size()); y++) {
-                //     for (int x = 0; x < static_cast<int>(imagem_com_bordas[0].size()); x++) {
-                //         mat_com_bordas.at<cv::Vec3b>(y, x) = cv::Vec3b(
-                //             static_cast<uchar>(imagem_com_bordas[y][x][0]),
-                //             static_cast<uchar>(imagem_com_bordas[y][x][1]),
-                //             static_cast<uchar>(imagem_com_bordas[y][x][2])
-                //         );
-                //     }
-                // }
-
-                // Converte imagem binaria para cv mat
-                cv::Mat mat_com_bordas(static_cast<int>(imagem_fechamento.size()), static_cast<int>(imagem_fechamento[0].size()), CV_8UC1);
-                for (int y = 0; y < static_cast<int>(imagem_fechamento.size()); y++) {
-                    for (int x = 0; x < static_cast<int>(imagem_fechamento[0].size()); x++) {
-                        mat_com_bordas.at<uchar>(y, x) = static_cast<uchar>(imagem_fechamento[y][x] * 255);
-                    }
-                }
-
-                // Cria pasta output/ se nao existir e salva as imagens de cada etapa
-                create_directories("output2");
-
-                string_view nome_imagem2 = nome_imagem;
-                nome_imagem2.remove_suffix(4);
-
-                string caminho_salvar = "output2/" + static_cast<std::string>(nome_imagem2) + to_string(i) + ".bmp";
-                imwrite(caminho_salvar, mat_com_bordas);
-                
-                std::cout << "Imagem salva em" << caminho_salvar << std::endl;
+        // Converte imagem com bordas vermelhas (3 canais BGR) para cv::Mat (CV_8UC3)
+        int altura = static_cast<int>(imagem_com_bordas.size());
+        int largura = static_cast<int>(imagem_com_bordas[0].size());
+        cv::Mat mat_saida(altura, largura, CV_8UC3);
+        for (int y = 0; y < altura; y++) {
+            for (int x = 0; x < largura; x++) {
+                mat_saida.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                    static_cast<uchar>(imagem_com_bordas[y][x][0]),
+                    static_cast<uchar>(imagem_com_bordas[y][x][1]),
+                    static_cast<uchar>(imagem_com_bordas[y][x][2])
+                );
             }
         }
-    std::cout << "Imagens das etapas salvas em output/" << std::endl;
 
+        string caminho_salvar = "output2/" + nome_imagem;
+        imwrite(caminho_salvar, mat_saida);
+        std::cout << "  -> Salva em: " << caminho_salvar << std::endl;
+    }
+    std::cout << "\nProcessamento concluido! Imagens salvas em output2/" << std::endl;
+    return 0;
 }
