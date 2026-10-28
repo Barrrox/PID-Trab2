@@ -93,13 +93,19 @@ std::vector<std::vector<std::vector<int>>> adicionar_bordas(
         std::vector<std::vector<int>>& bordas
     );
 
+std::vector<std::vector<std::vector<int>>> adicionar_bordas_unitaria(
+        std::vector<std::vector<std::vector<int>>>& imagem, 
+        const std::vector<ponto>& borda,
+        const std::vector<int>& cor
+    );
+
 std::vector<ponto> contornarBorda(
         const std::vector<std::vector<int>> &imagem, 
         ponto ponto_inicial
     );
 // auxiliares (nao sao chamadas no main)
 
-int identificar_folhas(
+std::vector<std::vector<ponto>> identificar_folhas(
         std::vector<std::vector<int>>& imagem_binarizada, 
         int limite_max_folhas = -1
     );

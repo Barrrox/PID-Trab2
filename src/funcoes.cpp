@@ -853,10 +853,13 @@ c/n7 b  n3
 }
 // Aplicar morfologia matemática
 
-int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int limite_max_folhas){
+vector<vector<ponto>> identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int limite_max_folhas){
 
     int altura = static_cast<int>(imagem_binarizada.size());
     int largura = static_cast<int>(imagem_binarizada[0].size()); 
+
+    vector<vector<ponto>> contornos = {};
+    vector<ponto> pontos_de_borda;
 
     const int dx[8] = { 0,  1, 1, 1, 0, -1, -1, -1 };
     const int dy[8] = {-1, -1, 0, 1, 1,  1,  0, -1 };
@@ -867,18 +870,16 @@ int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int lim
         for (int j = 0; j < largura; j++) {
 
             if (imagem_binarizada[i][j] == 1) {
-                int folhas_atuais = index - 2 + 1;
-                if (limite_max_folhas > 0 && folhas_atuais > limite_max_folhas) {
-                    return folhas_atuais; // Otimização: já estourou o limite máximo de folhas
-                }
 
                 ponto ponto_inicial = {i, j};
-                vector<ponto> pontos_de_borda = contornarBorda(imagem_binarizada, ponto_inicial);
+                pontos_de_borda = contornarBorda(imagem_binarizada, ponto_inicial);
 
                 // Marca os pontos do contorno externo
                 for (const ponto& p : pontos_de_borda) {
                     imagem_binarizada[p.y][p.x] = index;
                 }
+
+                contornos.push_back(pontos_de_borda);
 
                 // Limpeza em vizinhança-8 (Flood Fill / BFS) para rotular toda a espessura daquela borda
                 queue<ponto> fila;
@@ -907,9 +908,8 @@ int identificar_folhas(std::vector<std::vector<int>>& imagem_binarizada, int lim
         }
     }
 
-    return index - 2;
+    return contornos;
 }
-
 
 vector<vector<vector<int>>> adicionar_bordas(vector<vector<vector<int>>>& imagem, vector<vector<int>>& bordas){
 
@@ -930,5 +930,24 @@ vector<vector<vector<int>>> adicionar_bordas(vector<vector<vector<int>>>& imagem
     }
     
     return imagem_bordas;
+
+}
+
+vector<vector<vector<int>>> adicionar_bordas_unitaria(
+        vector<vector<vector<int>>>& imagem,
+        const vector<ponto>& borda,
+        const vector<int>& cor
+    ){
+
+
+    for (const ponto& p : borda) {
+
+
+        imagem[p.y][p.x][0] = cor[0]; // B
+        imagem[p.y][p.x][1] = cor[1]; // G
+        imagem[p.y][p.x][2] = cor[2]; // R
+    }
+    
+    return imagem;
 
 }

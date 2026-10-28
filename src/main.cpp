@@ -72,73 +72,48 @@ int main() {
         //////////////////////// Pipeline de processamento ////////////////////////
         ///////////////////////////////////////////////////////////////////////////
 
-        // Estima a cor do fundo em cinza
-        int corFundo = estimarCorFundo(img);
+        vector<int> corFundoBGR = estimarCorFundoBGR(img);
 
         // Converte tipo cv::Mat para matriz C++
-        vector<vector<vector<int>>> imagem = CV2vectorvector(img);
-
-        // Transforma para gray scale
-        vector<vector<int>> img_cinza = grayscale(imagem);
+        vector<vector<vector<int>>> imagem = CV2vectorvector(img);        
 
         HistogramaBGR hist = gerar_histograma(imagem);
 
-        
+        vector<vector<vector<int>>> img_suavizadaBGR = suavizarBGR(imagem, 2, 3);
 
-        // suavizar imagem com kernel 5x5 de média.
-        vector<vector<int>> img_suavizada = suavizar(img_cinza, 0, 21);
+        vector<vector<int>> img_bin = binarizarBGR(img_suavizadaBGR, corFundoBGR,
+                0.43, 0.68, 0.68);
 
-        // Binarizar imagem, já convertendo para uma matriz no C++
-        vector<vector<int>> img_bin = binarizar(img_suavizada, corFundo, 45);
+        vector<vector<int>> imagem_dilatada = dilatacao(img_bin, 5);
 
-        vector<vector<int>> imagem_dilatada = dilatacao(img_bin, 11);
+        vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada, 5); // erosao da imagem dilatada == fechamento
 
-        vector<vector<int>> imagem_dilatadassa = dilatacao(imagem_dilatada);
+        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, 5); // erosao do fechamento para extrair a borda
 
-        // faz erosao fixa de 1 pixel
-        vector<vector<int>> imagem_erodida = erosao(img_bin, 5);
-
-        // vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada);
-
-        // vector<vector<int>> imagem_abertura = dilatacao(imagem_erodida);
-
-        vector<vector<int>> bordas = subtrair(img_bin, imagem_erodida);
-
-        // vector<vector<int>> bordas_fechamento = subtrair(img_bin, imagem_fechamento);
-
-        // vector<vector<int>> bordas_abertura = subtrair(img_bin, imagem_abertura);
-        
-        // Destaca as bordas em vermelho na imagem original
+        vector<vector<int>> bordas = subtrair(imagem_fechamento, imagem_erodida);
 
         vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
-        
-        // int contagemBorda = contadorBorda(bordas);
+
+        // Identifica as folhas e extrai os contornos ordenados por indice
+        vector<vector<ponto>> contornos = identificar_folhas(bordas);
+        //vector<vector<vector<int>>> imagem_temp = imagem;
 
 
         cout << "Altura:" << img.rows << endl;
         cout << "Largura:" << img.cols << endl;
         cout << "Total Pixels: "<< img.rows * img.cols << endl; 
-        // cout << "Número de pixels DE UMA FOLHA:" << contagemBorda << endl;
+        cout << "Total de folhas identificadas: " << contornos.size() << endl;
 
-// 1. Cria cv::Mat de 1 canal com as dimensões de img_bin                            
-        ///////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////// PLOTS //////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////
-        
-        // Conversões das imanges para cv::Mat para plot e salvamento com imshow
 
-        // Converte etapas em tons de cinza (0..255) de vector<vector<int>> para cv::Mat
-        cv::Mat mat_cinza(static_cast<int>(img_cinza.size()), static_cast<int>(img_cinza[0].size()), CV_8UC1);
-        for (int y = 0; y < static_cast<int>(img_cinza.size()); y++) {
-            for (int x = 0; x < static_cast<int>(img_cinza[0].size()); x++) {
-                mat_cinza.at<uchar>(y, x) = static_cast<uchar>(img_cinza[y][x]);
-            }
-        }
-
-        cv::Mat mat_suavizada(static_cast<int>(img_suavizada.size()), static_cast<int>(img_suavizada[0].size()), CV_8UC1);
-        for (int y = 0; y < static_cast<int>(img_suavizada.size()); y++) {
-            for (int x = 0; x < static_cast<int>(img_suavizada[0].size()); x++) {
-                mat_suavizada.at<uchar>(y, x) = static_cast<uchar>(img_suavizada[y][x]);
+        // Converte 2_suavizada (3 canais BGR) para cv::Mat (CV_8UC3)
+        cv::Mat mat_suavizada(static_cast<int>(img_suavizadaBGR.size()), static_cast<int>(img_suavizadaBGR[0].size()), CV_8UC3);
+        for (int y = 0; y < static_cast<int>(img_suavizadaBGR.size()); y++) {
+            for (int x = 0; x < static_cast<int>(img_suavizadaBGR[0].size()); x++) {
+                mat_suavizada.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                    static_cast<uchar>(img_suavizadaBGR[y][x][0]),
+                    static_cast<uchar>(img_suavizadaBGR[y][x][1]),
+                    static_cast<uchar>(img_suavizadaBGR[y][x][2])
+                );
             }
         }
 
@@ -150,19 +125,19 @@ int main() {
             }
         }
 
-        // cv::Mat mat_dilatada(static_cast<int>(imagem_dilatada.size()), static_cast<int>(imagem_dilatada[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(imagem_dilatada.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(imagem_dilatada[0].size()); x++) {
-        //         mat_dilatada.at<uchar>(y, x) = static_cast<uchar>(imagem_dilatada[y][x] * 255);
-        //     }
-        // }
+        cv::Mat mat_dilatada(static_cast<int>(imagem_dilatada.size()), static_cast<int>(imagem_dilatada[0].size()), CV_8UC1);
+        for (int y = 0; y < static_cast<int>(imagem_dilatada.size()); y++) {
+            for (int x = 0; x < static_cast<int>(imagem_dilatada[0].size()); x++) {
+                mat_dilatada.at<uchar>(y, x) = static_cast<uchar>(imagem_dilatada[y][x] * 255);
+            }
+        }
 
-        // cv::Mat mat_dilatadassa(static_cast<int>(imagem_dilatadassa.size()), static_cast<int>(imagem_dilatadassa[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(imagem_dilatadassa.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(imagem_dilatadassa[0].size()); x++) {
-        //         mat_dilatadassa.at<uchar>(y, x) = static_cast<uchar>(imagem_dilatadassa[y][x] * 255);
-        //     }
-        // }
+        cv::Mat mat_fechamento(static_cast<int>(imagem_fechamento.size()), static_cast<int>(imagem_fechamento[0].size()), CV_8UC1);
+        for (int y = 0; y < static_cast<int>(imagem_fechamento.size()); y++) {
+            for (int x = 0; x < static_cast<int>(imagem_fechamento[0].size()); x++) {
+                mat_fechamento.at<uchar>(y, x) = static_cast<uchar>(imagem_fechamento[y][x] * 255);
+            }
+        }
 
         cv::Mat mat_erodida(static_cast<int>(imagem_erodida.size()), static_cast<int>(imagem_erodida[0].size()), CV_8UC1);
         for (int y = 0; y < static_cast<int>(imagem_erodida.size()); y++) {
@@ -171,142 +146,73 @@ int main() {
             }
         }
 
-        // cv::Mat mat_abertura(static_cast<int>(imagem_abertura.size()), static_cast<int>(imagem_abertura[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(imagem_abertura.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(imagem_abertura[0].size()); x++) {
-        //         mat_abertura.at<uchar>(y, x) = static_cast<uchar>(imagem_abertura[y][x] * 255);
-        //     }
-        // }
-
-        // cv::Mat mat_fechamento(static_cast<int>(imagem_fechamento.size()), static_cast<int>(imagem_fechamento[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(imagem_fechamento.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(imagem_fechamento[0].size()); x++) {
-        //         mat_fechamento.at<uchar>(y, x) = static_cast<uchar>(imagem_fechamento[y][x] * 255);
-        //     }
-        // }
-
         cv::Mat mat_bordas(static_cast<int>(bordas.size()), static_cast<int>(bordas[0].size()), CV_8UC1);
         for (int y = 0; y < static_cast<int>(bordas.size()); y++) {
             for (int x = 0; x < static_cast<int>(bordas[0].size()); x++) {
-                mat_bordas.at<uchar>(y, x) = static_cast<uchar>(bordas[y][x] * 255);
+                mat_bordas.at<uchar>(y, x) = static_cast<uchar>((bordas[y][x] != 0) ? 255 : 0);
             }
         }
 
-        // cv::Mat mat_bordas_fechamento(static_cast<int>(bordas_fechamento.size()), static_cast<int>(bordas_fechamento[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(bordas_fechamento.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(bordas_fechamento[0].size()); x++) {
-        //         mat_bordas_fechamento.at<uchar>(y, x) = static_cast<uchar>(bordas_fechamento[y][x] * 255);
-        //     }
-        // }
-        
-        // cv::Mat mat_bordas_abertura(static_cast<int>(bordas_abertura.size()), static_cast<int>(bordas_abertura[0].size()), CV_8UC1);
-        // for (int y = 0; y < static_cast<int>(bordas_abertura.size()); y++) {
-        //     for (int x = 0; x < static_cast<int>(bordas_abertura[0].size()); x++) {
-        //         mat_bordas_abertura.at<uchar>(y, x) = static_cast<uchar>(bordas_abertura[y][x] * 255);
-        //     }
-        // }
-
-        // Converte imagem com bordas vermelhas (3 canais BGR) para cv::Mat (CV_8UC3)
+        // Converte imagem com bordas (3 canais BGR) para cv::Mat (CV_8UC3)
         cv::Mat mat_com_bordas(static_cast<int>(imagem_com_bordas.size()), static_cast<int>(imagem_com_bordas[0].size()), CV_8UC3);
-        for (int y = 0; y < static_cast<int>(imagem_com_bordas.size()); y++) {
-            for (int x = 0; x < static_cast<int>(imagem_com_bordas[0].size()); x++) {
-                mat_com_bordas.at<cv::Vec3b>(y, x) = cv::Vec3b(
-                    static_cast<uchar>(imagem_com_bordas[y][x][0]),
-                    static_cast<uchar>(imagem_com_bordas[y][x][1]),
-                    static_cast<uchar>(imagem_com_bordas[y][x][2])
-                );
-            }
-        }
 
         // Cria pasta output/ se nao existir e salva as imagens de cada etapa
         create_directories("output");
         imwrite("output/1_original.bmp", img);
         salvar_histograma(hist, "output/histograma.bmp");
-        imwrite("output/2_cinza.bmp", mat_cinza);
-        imwrite("output/3_suavizada.bmp", mat_suavizada);
-        imwrite("output/4_binarizada.bmp", mat_bin);
-        imwrite("output/5_erodida.bmp", mat_erodida);
-        // imwrite("output/5_1_dilatacao.bmp", mat_dilatada);
-        // imwrite("output/5_1_1_dilatacao2x.bmp", mat_dilatadassa);
-        // imwrite("output/5_2_fechamento.bmp", mat_fechamento);
-        // imwrite("output/5_3_abertura.bmp", mat_abertura);
-        imwrite("output/6_bordas.bmp", mat_bordas);
-        // imwrite("output/6_1_bordas_fechamento.bmp", mat_bordas_fechamento);
-        // imwrite("output/6_2_bordas_abertura.bmp", mat_bordas_abertura);
-        imwrite("output/7_com_bordas.bmp", mat_com_bordas);
-        std::cout << "Imagens das etapas salvas em output/" << std::endl;
+        imwrite("output/2_suavizada.bmp", mat_suavizada);
+        imwrite("output/3_binarizada.bmp", mat_bin);
+        imwrite("output/4_dilatada.bmp", mat_dilatada);
+        imwrite("output/5_fechamento.bmp", mat_fechamento);
+        imwrite("output/6_erodida.bmp", mat_erodida);
+        imwrite("output/7_bordas.bmp", mat_bordas);
+        std::cout << "Imagens das etapas 1 a 7 salvas em output/" << std::endl;
 
-        // Exibe todas as etapas em janelas separadas lado a lado
-        int larg_jan = 300;
-        int alt_jan = 300;
-        int espacamento = 310;
-        int pos_y = 100;
-        int pos_x = 100;
+        bool encerrar = false;
+        for (size_t i = 0; i < contornos.size(); i++) {
+            // Pinta o contorno atual de vermelho
+            imagem = adicionar_bordas_unitaria(imagem, contornos[i], {0, 0, 255});
 
-        namedWindow("1 - Original", WINDOW_NORMAL);
-        resizeWindow("1 - Original", larg_jan, alt_jan);
-        moveWindow("1 - Original", 0 * espacamento, pos_y);
-        imshow("1 - Original", img);
+            for (int y = 0; y < static_cast<int>(imagem.size()); y++) {
+                for (int x = 0; x < static_cast<int>(imagem[0].size()); x++) {
+                    mat_com_bordas.at<cv::Vec3b>(y, x) = cv::Vec3b(
+                        static_cast<uchar>(imagem[y][x][0]),
+                        static_cast<uchar>(imagem[y][x][1]),
+                        static_cast<uchar>(imagem[y][x][2])
+                    );
+                }
+            }
 
-        namedWindow("2 - Cinza", WINDOW_NORMAL);
-        resizeWindow("2 - Cinza", larg_jan, alt_jan);
-        moveWindow("2 - Cinza", 1 * espacamento, pos_y);
-        imshow("2 - Cinza", mat_cinza);
+            namedWindow("8 - Com Bordas", cv::WINDOW_NORMAL | cv::WINDOW_KEEPRATIO);
+            resizeWindow("8 - Com Bordas", 1200, 850); // Cabe inteira na tela sem distorcer
+            imshow("8 - Com Bordas", mat_com_bordas);
 
-        namedWindow("3 - Suavizada", WINDOW_NORMAL);
-        resizeWindow("3 - Suavizada", larg_jan, alt_jan);
-        moveWindow("3 - Suavizada", 2 * espacamento, pos_y);
-        imshow("3 - Suavizada", mat_suavizada);
+            std::cout << "Folha " << (i + 1) << " de " << contornos.size()
+                      << " | Pixels na fronteira: " << contornos[i].size()
+                      << " (Pressione ENTER para proxima folha)" << std::endl;
 
-        namedWindow("4 - Binarizada", WINDOW_NORMAL);
-        resizeWindow("4 - Binarizada", larg_jan, alt_jan);
-        moveWindow("4 - Binarizada", 3 * espacamento, pos_y);
-        imshow("4 - Binarizada", mat_bin);
+            while (true) {
+                int tecla_folha = waitKey(0);
+                if (tecla_folha == 13 || tecla_folha == 10) { //  enter pra  windows e linux
+                    break;
+                }
+                if (tecla_folha == 27) { //  tecla ESC
+                    encerrar = true;
+                    break;
+                }
+            }
+            if (encerrar) break;
 
-        namedWindow("5 - Erodida", WINDOW_NORMAL);
-        resizeWindow("5 - Erodida", larg_jan, alt_jan);
-        moveWindow("5 - Erodida", 4 * espacamento, pos_y);
-        imshow("5 - Erodida", mat_erodida);
+            // Volta o contorno atual para BRANCO antes de pintar o proximo
+            imagem = adicionar_bordas_unitaria(imagem, contornos[i], {255, 255, 255}); //  B G R
+        }
 
-        // namedWindow("5.1 - Dilatacao", WINDOW_NORMAL);
-        // resizeWindow("5.1 - Dilatacao", larg_jan, alt_jan);
-        // moveWindow("5.1 - Dilatacao", 0 * espacamento, pos_y);
-        // imshow("5.1 - Dilatacao", mat_dilatada);
+        imwrite("output/8_com_bordas.bmp", mat_com_bordas);
 
-        //  namedWindow("5.1_1 - Dilatcao2x", WINDOW_NORMAL);
-        // resizeWindow("5.1_1 - Dilatcao2x", larg_jan, alt_jan);
-        // moveWindow("5.1_1 - Dilatcao2x", 0 * espacamento, pos_y);
-        // imshow("5.1_1 - Dilatcao2x", mat_dilatadassa);
-
-        // namedWindow("5.2 - Fechamento", WINDOW_NORMAL);
-        // resizeWindow("5.2 - Fechamento", larg_jan, alt_jan);
-        // moveWindow("5.2 - Fechamento", 1 * espacamento, pos_y);
-        // imshow("5.2 - Fechamento", mat_fechamento);
-
-        // namedWindow("5.3 - Abertura", WINDOW_NORMAL);
-        // resizeWindow("5.3 - Abertura", larg_jan, alt_jan);
-        // moveWindow("5.3 - Abertura", 2 * espacamento, pos_y);
-        // imshow("5.3 - Abertura", mat_abertura);
-
-        namedWindow("6 - Bordas", WINDOW_NORMAL);
-        resizeWindow("6 - Bordas", larg_jan, alt_jan);
-        moveWindow("6 - Bordas", 3 * espacamento, pos_y + espacamento + 30);
-        imshow("6 - Bordas", mat_bordas);
-
-        // namedWindow("6.1 - Bordas_fechamento", WINDOW_NORMAL);
-        // resizeWindow("6.1 - Bordas_fechamento", larg_jan, alt_jan);
-        // moveWindow("6.1 - Bordas_fechamento", 4 * espacamento, pos_y + espacamento + 30);
-        // imshow("6.1 - Bordas_fechamento", mat_bordas_fechamento);
-
-        // namedWindow("6.2 - Bordas_abertura", WINDOW_NORMAL);
-        // resizeWindow("6.2 - Bordas_abertura", larg_jan, alt_jan);
-        // moveWindow("6.2 - Bordas_abertura", 0 * espacamento, pos_y + espacamento + 30);
-        // imshow("6.2 - Bordas_abertura", mat_bordas_abertura);
-
-        namedWindow("7 - Com Bordas", WINDOW_NORMAL);
-        resizeWindow("7 - Com Bordas", larg_jan, alt_jan);
-        moveWindow("7 - Com Bordas", 1 * espacamento, pos_y + espacamento + 30);
-        imshow("7 - Com Bordas", mat_com_bordas);
+        if (encerrar) {
+            destroyAllWindows();
+            break;
+        }
 
         std::cout << "Aperte ESPAÇO para proxima imagem ou ESC para encerrar" << std::endl;
         int tecla = waitKey(0);
