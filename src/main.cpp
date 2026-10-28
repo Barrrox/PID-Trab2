@@ -92,7 +92,16 @@ int main() {
         vector<vector<vector<int>>> imagem_com_bordas = adicionar_bordas(imagem, bordas);
 
         // Identifica as folhas e extrai os contornos ordenados por indice
-        vector<vector<ponto>> contornos = identificar_folhas(bordas);
+        vector<vector<ponto>> contornos_todos = identificar_folhas(bordas);
+
+        // Filtra ruidos (< 500 pixels)
+        const size_t LIMIAR_MIN_PIXELS = 500;
+        vector<vector<ponto>> contornos;
+        for (const auto& c : contornos_todos) {
+            if (c.size() >= LIMIAR_MIN_PIXELS) {
+                contornos.push_back(c);
+            }
+        }
 
 
         cout << "Altura:" << img.rows << endl;
