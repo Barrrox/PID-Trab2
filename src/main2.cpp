@@ -12,9 +12,10 @@ using namespace cv;
 
 #include <opencv2/core/utils/logger.hpp> // Para silenciar INFOs do openCV
 
-const int METODO_SUAVIZACAO = 2; // 0 = Gaussiano, 1 = Media, 2 = Mediana
-const int TAM_SUAVIZACAO = 3;
+const int METODO_SUAVIZACAO = 1; // 0 = Gaussiano, 1 = Media, 2 = Mediana
+const int TAM_SUAVIZACAO = 7;
 const int TAM_EE = 5;
+const int TAM_EE_extracao_borda = 3; // Especifico para extração de borda
 const float KB = 0.43f;
 const float KG = 0.68f;
 const float KR = 0.68f;
@@ -110,7 +111,7 @@ int main() {
         vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada, TAM_EE);
 
         // 4. Extrai fronteira morfologica: bordas = Fechamento - (Fechamento (-) B)
-        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, TAM_EE);
+        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, TAM_EE_extracao_borda);
         vector<vector<int>> bordas = subtrair(imagem_fechamento, imagem_erodida);
 
         // 5. Destaca todas as bordas em vermelho na imagem original (antes de rotular bordas)

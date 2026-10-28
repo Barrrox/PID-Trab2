@@ -16,9 +16,10 @@ using namespace std;
 using namespace filesystem;
 using namespace cv;
 
-const int METODO_SUAVIZACAO = 2; // 0 = Gaussiano, 1 = Media, 2 = Mediana
-const int TAM_SUAVIZACAO = 3;
+const int METODO_SUAVIZACAO = 1; // 0 = Gaussiano, 1 = Media, 2 = Mediana
+const int TAM_SUAVIZACAO = 7;
 const int TAM_EE = 5;
+const int TAM_EE_extracao_borda = 3; // Especifico para extração de borda
 const float KB = 0.43f;
 const float KG = 0.68f;
 const float KR = 0.68f;
@@ -141,7 +142,7 @@ int main() {
         vector<vector<int>> img_bin = binarizarBGR(img_suavizada, corFundoBGR, KB, KG, KR);
         vector<vector<int>> imagem_dilatada = dilatacao(img_bin, TAM_EE);
         vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada, TAM_EE);
-        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, TAM_EE);
+        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, TAM_EE_extracao_borda);
         vector<vector<int>> bordas = subtrair(imagem_fechamento, imagem_erodida);
 
         vector<vector<ponto>> contornos = identificar_folhas(bordas);

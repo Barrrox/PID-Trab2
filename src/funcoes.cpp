@@ -612,6 +612,17 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria, int tam_ee){
 
     vector<vector<int>> ee(tam_ee, vector<int>(tam_ee, 1));
 
+    // transforma em 0 1 0
+    //               1 1 1
+    //               0 1 0
+    if (tam_ee == 3) {
+        ee[0][0] = 0;
+        ee[2][0] = 0;
+        ee[0][2] = 0;
+        ee[2][2] = 0;
+    }
+    
+
     int altura = static_cast<int>(binaria.size());
     int largura = static_cast<int>(binaria[0].size());
     int raio = tam_ee / 2;
@@ -627,15 +638,13 @@ vector<vector<int>> erosao(const vector<vector<int>> &binaria, int tam_ee){
 
             for (int j = -raio; j <= raio; j++) { // Itera sobre as linhas da máscara
                 for (int i = -raio; i <= raio; i++) { // Itera sobre os pixels da linh
-
                     
-                    if (ee[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 1) {
-                        continue; // Se o pixel da máscara é 1 e o pixel correspondente na imagem binária também é 1, continue
-                    } else {
-                        erodir = false; 
-                        break; // se falso já encerra
-
+                    // Se a posição faz parte do EE (== 1), mas na imagem é fundo (== 0), falha a erosão
+                    if (ee[j + raio][i + raio] == 1 && binaria_com_padding[y + raio + j][x + raio + i] == 0) {
+                        erodir = false;
+                        break;
                     }
+                    
                 }
                 if (!erodir) break; // se encontrou um pixel não igual já para o processamento pra aql pixel
             }

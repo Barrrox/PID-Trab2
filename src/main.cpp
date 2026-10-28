@@ -17,9 +17,6 @@ using namespace cv;
 2 = Filtro por Mediana 5x5
 */
 
-#define metodoSuavizao 0
-
-
 int main() {
 
     utils::logging::setLogLevel(utils::logging::LOG_LEVEL_WARNING); // Para silenciar INFOs do openCV
@@ -79,7 +76,7 @@ int main() {
 
         HistogramaBGR hist = gerar_histograma(imagem);
 
-        vector<vector<vector<int>>> img_suavizadaBGR = suavizarBGR(imagem, 2, 3);
+        vector<vector<vector<int>>> img_suavizadaBGR = suavizarBGR(imagem, 1, 7);
 
         vector<vector<int>> img_bin = binarizarBGR(img_suavizadaBGR, corFundoBGR,
                 0.43, 0.68, 0.68);
@@ -88,7 +85,7 @@ int main() {
 
         vector<vector<int>> imagem_fechamento = erosao(imagem_dilatada, 5); // erosao da imagem dilatada == fechamento
 
-        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, 5); // erosao do fechamento para extrair a borda
+        vector<vector<int>> imagem_erodida = erosao(imagem_fechamento, 3); // erosao do fechamento para extrair a borda
 
         vector<vector<int>> bordas = subtrair(imagem_fechamento, imagem_erodida);
 
